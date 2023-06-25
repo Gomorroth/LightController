@@ -1,0 +1,18 @@
+{
+    "name": "gomoru.su.light-controller.editor",
+    "references": [
+        "GUID:9e94948ce3574a04dad601c50c39d48c",
+        "GUID:5ce33783346c3124990afbe7b0390a06"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

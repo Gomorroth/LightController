@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace gomoru.su
+namespace gomoru.su.LightController
 {
     public static class RuntimeHelper
     {

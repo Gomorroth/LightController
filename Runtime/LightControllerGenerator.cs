@@ -1,12 +1,10 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using nadena.dev.modular_avatar.core;
 using UnityEngine;
 using VRC.SDKBase;
 
-namespace gomoru.su
+namespace gomoru.su.LightController
 {
-    [RequireComponent(typeof(ModularAvatarMenuInstaller))]
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(-10000)]
     public sealed class LightControllerGenerator : MonoBehaviour, IEditorOnly

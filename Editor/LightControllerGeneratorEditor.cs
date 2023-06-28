@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace gomoru.su
+namespace gomoru.su.LightController
 {
     [CustomEditor(typeof(LightControllerGenerator))]
     public sealed class LightControllerGeneratorEditor : Editor

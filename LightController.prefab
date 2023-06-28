@@ -10,7 +10,6 @@ GameObject:
   m_Component:
   - component: {fileID: 6567180928702640487}
   - component: {fileID: 8555851639564128360}
-  - component: {fileID: 9099864510726201704}
   m_Layer: 0
   m_Name: LightController
   m_TagString: Untagged
@@ -44,17 +43,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e8b4be43d369a654e84c04cdc4f29bc4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &9099864510726201704
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 998832072995348348}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7ef83cb0c23d4d7c9d41021e544a1978, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  menuToAppend: {fileID: 0}
-  installTargetMenu: {fileID: 0}
+  LightMaxLimitMax: 1
+  UseMaterialPropertyAsDefault: 1
+  DefaultParameters:
+    LightMinLimit: 0.05
+    LightMaxLimit: 1
+    MonochromeLighting: 0
+    ShadowEnvStrength: 0
+    AsUnlit: 0
+    VertexLightStrength: 0
+  FX: {fileID: 0}

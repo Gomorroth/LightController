@@ -1,14 +1,17 @@
-﻿using System;
+﻿using NUnit;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
+using VRC.SDK3.Avatars.Components;
 
-namespace gomoru.su
+namespace gomoru.su.LightController
 {
     internal static class Utils
     {
@@ -33,6 +36,26 @@ namespace gomoru.su
             AssetDatabase.CreateAsset(fx, System.IO.Path.Combine(Utils.GetGeneratedAssetsFolder(), $"{fx.name}.controller"));
             AssetDatabase.SaveAssets();
             return fx;
+        }
+
+        public static VRCAvatarDescriptor FindAvatarFromParent(this GameObject obj)
+        {
+            var tr = obj.transform;
+            VRCAvatarDescriptor avatar = null;
+            while (tr != null && (avatar = tr.GetComponent<VRCAvatarDescriptor>()) == null)
+            {
+                tr = tr.parent;
+            }
+            return avatar;
+        }
+
+        public static T GetOrAddComponent<T>(this GameObject obj, Action<T> action = null) where T : Component
+        {
+            var component = obj.GetComponent<T>();
+            if (component == null)
+                component = obj.AddComponent<T>();
+            action?.Invoke(component);
+            return component;
         }
 
         public static T AddTo<T>(this T obj, UnityEngine.Object asset) where T : UnityEngine.Object
@@ -73,5 +96,48 @@ namespace gomoru.su
         private static string[] _relativePathBuffer;
 
         public static IEnumerable<string> EnumeratePropertyNames(this Shader shader) => Enumerable.Range(0, shader.GetPropertyCount()).Select(shader.GetPropertyName);
+
+        private static AnimatorCondition[] _conditions1 = new AnimatorCondition[1];
+        private static AnimatorCondition[] _conditions2 = new AnimatorCondition[2];
+
+        public static AnimatorStateTransition AddTransition(this AnimatorState state, AnimatorState destination, AnimatorCondition condition)
+        {
+            _conditions1[0] = condition;
+            return state.AddTransition(destination, _conditions1);
+        }
+
+        public static AnimatorStateTransition AddTransition(this AnimatorState state, AnimatorState destination, AnimatorCondition condition1, AnimatorCondition condition2)
+        {
+            _conditions2[0] = condition1;
+            _conditions2[1] = condition2;
+            return state.AddTransition(destination, _conditions2);
+        }
+
+        public static AnimatorStateTransition AddTransition(this AnimatorState state, AnimatorState destination, AnimatorCondition[] conditions)
+        {
+            var transition = new AnimatorStateTransition()
+            {
+                destinationState = destination,
+                hasExitTime = false,
+                duration = 0,
+                hasFixedDuration = true,
+                canTransitionToSelf = false,
+                conditions = conditions,
+            }.HideInHierarchy().AddTo(state);
+            state.AddTransition(transition);
+            return transition;
+        }
+    }
+
+    public static class ValueTupleHelper
+    {
+        public static int Count<TTuple>(this TTuple t) where TTuple : struct, ITuple => t.Length;
+        public static IEnumerable<object> ToEnumerable<TTuple>(this TTuple tuple) where TTuple : struct, ITuple
+        {
+            for(int i = 0; i < tuple.Length; i++)
+            {
+                yield return tuple[i];
+            }
+        }
     }
 }

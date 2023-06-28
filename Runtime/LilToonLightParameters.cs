@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace gomoru.su
+namespace gomoru.su.LightController
 {
     [Serializable]
     public struct LilToonLightParameters

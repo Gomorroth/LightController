@@ -1,6 +1,7 @@
 ﻿using nadena.dev.modular_avatar.core;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,6 +14,8 @@ namespace gomoru.su.LightController
     internal static class LightController
     {
         private const string EditorPrefsKey = "gomoru.su.LightController.generatedPrefabGUID";
+        private const string PrefabPath = "Assets/LightController/LightController.prefab";
+
         static LightController()
         {
             EditorApplication.delayCall += () =>
@@ -20,16 +23,17 @@ namespace gomoru.su.LightController
                 var guid = EditorPrefs.GetString(EditorPrefsKey, null);
                 if (string.IsNullOrEmpty(guid) || string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath(guid)))
                 {
-                    if (!AssetDatabase.IsValidFolder("Assets/LightController"))
+                    var directory = Path.GetDirectoryName(PrefabPath);
+                    if (!AssetDatabase.IsValidFolder(directory))
                     {
-                        AssetDatabase.CreateFolder("Assets", "LightController");
+                        AssetDatabase.CreateFolder(Path.GetDirectoryName(directory), Path.GetFileName(directory));
                     }
-                    var prefab = new GameObject("LightController");
+                    var prefab = new GameObject(Path.GetFileNameWithoutExtension(PrefabPath));
                     prefab.AddComponent<LightControllerGenerator>();
                     prefab.AddComponent<ModularAvatarMenuInstaller>();
-                    PrefabUtility.SaveAsPrefabAsset(prefab, "Assets/LightController/LightController.prefab");
+                    PrefabUtility.SaveAsPrefabAsset(prefab, PrefabPath);
                     GameObject.DestroyImmediate(prefab);
-                    EditorPrefs.SetString(EditorPrefsKey, AssetDatabase.AssetPathToGUID("Assets/LightController/LightController.prefab"));
+                    EditorPrefs.SetString(EditorPrefsKey, AssetDatabase.AssetPathToGUID(PrefabPath));
                 }
             };
         }

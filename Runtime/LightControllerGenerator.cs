@@ -13,7 +13,7 @@ namespace gomoru.su.LightController
         public float LightMaxLimitMax = 1;
 
         [SerializeField]
-        public bool UseMaterialPropertyAsDefault = true;
+        public bool UseMaterialPropertyAsDefault = false;
 
         [SerializeField]
         public LilToonParameters DefaultParameters = new LilToonParameters();

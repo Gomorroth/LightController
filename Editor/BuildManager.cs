@@ -36,6 +36,7 @@ namespace gomoru.su.LightController
             generator.gameObject.SetActive(false);
             Generator.Generate(avatar, generator);
             AssetDatabase.SaveAssets();
+            GameObject.DestroyImmediate(generator);
             generator.gameObject.SetActive(true);
         }
     }

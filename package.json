@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "displayName": "Light Controller",
   "description": "Animation and Expression generator for lighting parameter of lilToon using Modular Avatar.",
-  "url" : "",
+  "url" : "https://github.com/Gomorroth/LightController",
   "vpmDependencies" : {
     "com.vrchat.avatars" : "^3.2.1",
     "nadena.dev.modular-avatar" : "^1.6.0"

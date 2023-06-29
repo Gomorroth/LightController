@@ -11,12 +11,15 @@ namespace gomoru.su.LightController
 
         static BuildManager()
         {
-            RuntimeHelper.OnAwake = sender =>
+            RuntimeHelper.OnAwake = generator =>
             {
-                var avatar = sender.gameObject.FindAvatarFromParent();
+                var avatar = generator.gameObject.FindAvatarFromParent();
                 if (avatar != null )
                 {
-                    Process(avatar.gameObject, sender);
+                    generator.gameObject.SetActive(false);
+                    Process(avatar.gameObject, generator);
+                    GameObject.DestroyImmediate(generator);
+                    generator.gameObject.SetActive(true);
                 }
             };
         }
@@ -27,17 +30,15 @@ namespace gomoru.su.LightController
             if (generator != null)
             {
                 Process(avatarGameObject, generator);
+                GameObject.DestroyImmediate(generator);
             }
             return true;
         }
 
         public static void Process(GameObject avatar, LightControllerGenerator generator)
         {
-            generator.gameObject.SetActive(false);
             Generator.Generate(avatar, generator);
             AssetDatabase.SaveAssets();
-            generator.gameObject.SetActive(true);
-            GameObject.DestroyImmediate(generator.gameObject);
         }
     }
 }

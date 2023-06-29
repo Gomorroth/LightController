@@ -7,7 +7,8 @@ https://github.com/lilxyzw/lilToon
 
 ## 導入
 [このページ](https://gomorroth.github.io/vpm-repos/)に飛んで`Add to VCC`を押してリポジトリを追加、  
-プロジェクト管理画面で`Light Controller`を導入してください。
+プロジェクト管理画面で`Light Controller`を導入してください。  
+![image](https://github.com/Gomorroth/LightController/assets/70315656/eb955951-ce31-4ab1-96c4-331862c0a86e)
 
 ## 使い方
 導入後、自動で生成される`Assets/LightController/LightController.prefab`をアバター直下に設置してください。  

@@ -1,4 +1,4 @@
-# LightController
+# Light Controller
 プレハブを設置するだけで明るさ調整メニューを生成するツール。  
 ![image](https://github.com/Gomorroth/LightController/assets/70315656/23c36800-d120-4229-a2d1-e76bfb6cba95)
 

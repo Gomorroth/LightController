@@ -5,6 +5,10 @@
 lilToonにのみ対応しています。  
 https://github.com/lilxyzw/lilToon
 
+## 導入
+[このページ](https://gomorroth.github.io/vpm-repos/)に飛んで`Add to VCC`を押してリポジトリを追加、  
+プロジェクト管理画面で`Light Controller`を導入してください。
+
 ## 使い方
 導入後、自動で生成される`Assets/LightController/LightController.prefab`をアバター直下に設置してください。  
 プレイモードに入った時、またはアバターがビルド（アップロード等）された際に自動でメニューが生成されます。

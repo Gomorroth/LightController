@@ -1,11 +1,8 @@
-﻿using NUnit;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -126,6 +123,33 @@ namespace gomoru.su.LightController
             }.HideInHierarchy().AddTo(state);
             state.AddTransition(transition);
             return transition;
+        }
+
+        public static AnimatorController AddParameter<T>(this AnimatorController controller, string name, T defaultValue)
+        {
+            var param = new AnimatorControllerParameter()
+            {
+                name = name,
+
+            };
+            if (typeof(T) == typeof(float))
+            {
+                param.type = AnimatorControllerParameterType.Float;
+                param.defaultFloat = (float)(object)defaultValue;
+            }
+            else if (typeof(T) == typeof(int))
+            {
+                param.type = AnimatorControllerParameterType.Int;
+                param.defaultInt = (int)(object)defaultValue;
+            }
+            else if (typeof(T) == typeof(bool))
+            {
+                param.type = AnimatorControllerParameterType.Bool;
+                param.defaultBool = (bool)(object)defaultValue;
+            }
+            else throw new ArgumentException(nameof(defaultValue));
+            controller.AddParameter(param);
+            return controller;
         }
     }
 

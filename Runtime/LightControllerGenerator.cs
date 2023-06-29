@@ -16,7 +16,7 @@ namespace gomoru.su.LightController
         public bool UseMaterialPropertyAsDefault = true;
 
         [SerializeField]
-        public LilToonLightParameters DefaultParameters = LilToonLightParameters.Default;
+        public LilToonParameters DefaultParameters = new LilToonParameters();
 
 #if UNITY_EDITOR
 

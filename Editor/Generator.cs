@@ -1,16 +1,9 @@
 ﻿using nadena.dev.modular_avatar.core;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
-using UnityEngine.UIElements;
-using VRC.Core;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace gomoru.su.LightController
@@ -19,6 +12,70 @@ namespace gomoru.su.LightController
     {
         private const string PropertyNamePrefix = "material._";
         private const string ParameterNamePrefix = "LightController";
+
+        private static readonly ParameterControl[] Controls = new ParameterControl[]
+        {
+            new ParameterControl()
+            {
+                Name = "Min",
+                AddParameters = args => args.FX.AddParameter(args.Name, args.Parameters.LightMinLimit),
+                SetAnimationCurves = args =>
+                {
+                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.LightMinLimit)}", AnimationUtils.Constant(args.Parameters.LightMinLimit));
+                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.LightMinLimit)}", AnimationUtils.Linear(0, 1));
+                }
+            },
+            new ParameterControl()
+            {
+                Name = "Max",
+                AddParameters = args => args.FX.AddParameter(args.Name, (1 + args.Parameters.LightMaxLimit) / args.Generator.LightMaxLimitMax),
+                SetAnimationCurves = args =>
+                {
+                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.LightMaxLimit)}", AnimationUtils.Constant(args.Parameters.LightMaxLimit));
+                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.LightMaxLimit)}", AnimationUtils.Linear(0, args.Generator.LightMaxLimitMax));
+                }
+            },
+            new ParameterControl()
+            {
+                Name = "Monochrome",
+                AddParameters = args => args.FX.AddParameter(args.Name, args.Parameters.MonochromeLighting),
+                SetAnimationCurves = args =>
+                {
+                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.MonochromeLighting)}", AnimationUtils.Constant(args.Parameters.MonochromeLighting));
+                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.MonochromeLighting)}", AnimationUtils.Linear(0, 1));
+                }
+            },
+            new ParameterControl()
+            {
+                Name = "ShadowEnvStrength",
+                AddParameters = args => args.FX.AddParameter(args.Name, args.Parameters.ShadowEnvStrength),
+                SetAnimationCurves = args =>
+                {
+                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.ShadowEnvStrength)}", AnimationUtils.Constant(args.Parameters.ShadowEnvStrength));
+                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.ShadowEnvStrength)}", AnimationUtils.Linear(0, 1));
+                }
+            },
+            new ParameterControl()
+            {
+                Name = "AsUnlit",
+                AddParameters = args => args.FX.AddParameter(args.Name, args.Parameters.AsUnlit),
+                SetAnimationCurves = args =>
+                {
+                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.AsUnlit)}", AnimationUtils.Constant(args.Parameters.AsUnlit));
+                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.AsUnlit)}", AnimationUtils.Linear(0, 1));
+                }
+            },
+            new ParameterControl()
+            {
+                Name = "VertexLightStrength",
+                AddParameters = args => args.FX.AddParameter(args.Name, args.Parameters.VertexLightStrength),
+                SetAnimationCurves = args =>
+                {
+                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.VertexLightStrength)}", AnimationUtils.Constant(args.Parameters.VertexLightStrength));
+                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.VertexLightStrength)}", AnimationUtils.Linear(0, 1));
+                }
+            },
+        };
 
         public static void Generate(GameObject avatarObject, LightControllerGenerator generator)
         {
@@ -35,21 +92,18 @@ namespace gomoru.su.LightController
                         .Where(y => y != null)
                         .FirstOrDefault(y =>
                             y.shader.name.IndexOf("lilToon", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                            y.shader.EnumeratePropertyNames().Any(z => z == $"_{nameof(LilToonLightParameters.LightMinLimit)}"))
+                            y.shader.EnumeratePropertyNames().Any(z => z == $"_{nameof(LilToonParameters.LightMinLimit)}"))
                         ))
                 .Where(x => x.Material != null);
 
-            var clips = (
-                Default: fx.CreateAnim("Default"),
-                Min: fx.CreateAnim("Min"),
-                Max: fx.CreateAnim("Max"),
-                Monochrome: fx.CreateAnim("Monochrome"),
-                ShadowEnv: fx.CreateAnim("ShadowEnvStrength"),
-                AsUnlit: fx.CreateAnim("AsUnlit"),
-                VertexLight: fx.CreateAnim("VertexLightStrength")
-                );
+            foreach (var control in Controls)
+            {
+                control.Default = fx.CreateAnim($"{control.Name} Default");
+                control.Control = fx.CreateAnim(control.Name);
+            }
 
             var @params = generator.DefaultParameters;
+
 
             foreach (var (renderer, material) in targets)
             {
@@ -57,97 +111,42 @@ namespace gomoru.su.LightController
                 var type = renderer.GetType();
                 if (generator.UseMaterialPropertyAsDefault)
                 {
-                    SetParametersFromMaterial(ref @params, material);
+                    @params.SetValuesFromMaterial(material);
                 }
 
-                clips.Default.SetCurve(path, type, $"{PropertyNamePrefix}{nameof(LilToonLightParameters.LightMinLimit)}", AnimationUtils.Constant(@params.LightMinLimit));
-                clips.Default.SetCurve(path, type, $"{PropertyNamePrefix}{nameof(LilToonLightParameters.LightMaxLimit)}", AnimationUtils.Constant(@params.LightMaxLimit));
-                clips.Default.SetCurve(path, type, $"{PropertyNamePrefix}{nameof(LilToonLightParameters.MonochromeLighting)}", AnimationUtils.Constant(@params.MonochromeLighting));
-                clips.Default.SetCurve(path, type, $"{PropertyNamePrefix}{nameof(LilToonLightParameters.ShadowEnvStrength)}", AnimationUtils.Constant(@params.ShadowEnvStrength));
-                clips.Default.SetCurve(path, type, $"{PropertyNamePrefix}{nameof(LilToonLightParameters.AsUnlit)}", AnimationUtils.Constant(@params.AsUnlit));
-                clips.Default.SetCurve(path, type, $"{PropertyNamePrefix}{nameof(LilToonLightParameters.VertexLightStrength)}", AnimationUtils.Constant(@params.VertexLightStrength));
-
-                clips.Min.SetCurve(path, type, $"{PropertyNamePrefix}{nameof(LilToonLightParameters.LightMinLimit)}", AnimationUtils.Linear(0, 1));
-
-                clips.Max.SetCurve(path, type, $"{PropertyNamePrefix}{nameof(LilToonLightParameters.LightMaxLimit)}", AnimationUtils.Linear(0, generator.LightMaxLimitMax));
-
-                clips.Monochrome.SetCurve(path, type, $"{PropertyNamePrefix}{nameof(LilToonLightParameters.MonochromeLighting)}", AnimationUtils.Linear(0, 1));
-
-                clips.ShadowEnv.SetCurve(path, type, $"{PropertyNamePrefix}{nameof(LilToonLightParameters.ShadowEnvStrength)}", AnimationUtils.Linear(0, 1));
-
-                clips.AsUnlit.SetCurve(path, type, $"{PropertyNamePrefix}{nameof(LilToonLightParameters.AsUnlit)}", AnimationUtils.Linear(0, 1));
-
-                clips.VertexLight.SetCurve(path, type, $"{PropertyNamePrefix}{nameof(LilToonLightParameters.VertexLightStrength)}", AnimationUtils.Linear(0, 1));
+                foreach(var control in Controls)
+                {
+                    control.SetAnimationCurves((path, type, control.Default, control.Control, material, generator, @params));
+                }
             }
 
-            var enumerable = clips.ToEnumerable().Skip(1).Cast<AnimationClip>().Select((x, i) => (x, i));
+            fx.AddParameter("Enabled", AnimatorControllerParameterType.Bool);
 
-            // Build AnimatorController
+            foreach (var control in Controls)
             {
                 var layer = new AnimatorControllerLayer()
                 {
-                    name = "LightController",
+                    name = control.Name,
                     defaultWeight = 1,
-                    stateMachine = new AnimatorStateMachine() { name = "LightController" }.HideInHierarchy().AddTo(fx),
+                    stateMachine = new AnimatorStateMachine() { name = control.Name }.HideInHierarchy().AddTo(fx),
                 };
 
                 var stateMachine = layer.stateMachine;
 
-                var idle = stateMachine.CreateState("Idle", fx.CreateAnim("Blank"));
-                var @default = stateMachine.CreateState("Default", clips.Default);
+                var idle = stateMachine.CreateState("Idle", control.Default);
+                var state = stateMachine.CreateState(control.Name, control.Control);
+                state.timeParameter = control.Name;
+                state.timeParameterActive = true;
 
-                idle.AddTransition(@default, new AnimatorCondition() { mode = AnimatorConditionMode.IfNot, parameter = "Enabled" });
-                @default.AddTransition(idle, new AnimatorCondition() { mode = AnimatorConditionMode.If, parameter = "Enabled" });
+                idle.AddTransition(state, new AnimatorCondition() { mode = AnimatorConditionMode.If, parameter = "Enabled" });
+                state.AddTransition(idle, new AnimatorCondition() { mode = AnimatorConditionMode.IfNot, parameter = "Enabled" });
 
-                int idx = 0;
-                AddControlState(clips.Min, @params.LightMinLimit, new Vector3(300, idx++ * 100));
-                AddControlState(clips.Max, @params.LightMaxLimit, new Vector3(300, idx++ * 100));
-                AddControlState(clips.Monochrome, @params.MonochromeLighting, new Vector3(300, idx++ * 100));
-                AddControlState(clips.ShadowEnv, @params.ShadowEnvStrength, new Vector3(300, idx++ * 100));
-                AddControlState(clips.AsUnlit, @params.AsUnlit, new Vector3(300, idx++ * 100));
-                AddControlState(clips.VertexLight, @params.VertexLightStrength, new Vector3(300, idx++ * 100));
+                stateMachine.AddState(idle, stateMachine.entryPosition + new Vector3(150, 0));
+                stateMachine.AddState(state, stateMachine.entryPosition + new Vector3(150, 50));
 
-                var stroke = clips.ToEnumerable().Skip(1).Cast<AnimationClip>().Select((x, i) =>
-                {
-                    var state = stateMachine.CreateState(x.name, x);
-                    state.timeParameter = x.name;
-                    state.timeParameterActive = true;
-                    stateMachine.AddState(state, new Vector3(100 * i, 400));
-                    return state;
-
-                });
-
-                stroke.Zip(stroke.Skip(1), (x, y) => (x, y)).Select(x =>
-                {
-                    Debug.Log($"{x.x.name} {x.y.name}");
-                    return x;
-                }).All(x => true);
-
-                stateMachine.AddState(idle, new Vector3(0, 0));
-                stateMachine.defaultState = idle;
-                stateMachine.AddState(@default, new Vector3(0, 100));
+                control.AddParameters((control.Name, fx, generator, @params));
 
                 fx.AddLayer(layer);
-                fx.AddParameter("Enabled", AnimatorControllerParameterType.Bool);
-
-                AnimatorState AddControlState(AnimationClip clip, float defaultValue, Vector3 position)
-                {
-                    var state = stateMachine.CreateState(clip.name, clip);
-                    state.timeParameter = clip.name;
-                    state.timeParameterActive = true;
-                    fx.AddParameter(new AnimatorControllerParameter() { name = clip.name, type = AnimatorControllerParameterType.Float, defaultFloat = defaultValue });
-                    fx.AddParameter(new AnimatorControllerParameter() { name = $"Control{clip.name}", type = AnimatorControllerParameterType.Bool, defaultBool = false });
-
-                    idle.AddTransition(state, new AnimatorCondition() { mode = AnimatorConditionMode.If, parameter = $"Control{clip.name}" });
-                    state.AddTransition(idle, new AnimatorCondition() { mode = AnimatorConditionMode.IfNot, parameter = $"Control{clip.name}" });
-
-                    state.AddTransition(@default, new AnimatorCondition() { mode = AnimatorConditionMode.IfNot, parameter = "Enabled" });
-
-                    stateMachine.AddState(state, position);
-
-                    return state;
-                }
-
             }
 
             go.GetOrAddComponent<ModularAvatarMergeAnimator>(x =>
@@ -168,12 +167,15 @@ namespace gomoru.su.LightController
                     parameter = new VRCExpressionsMenu.Control.Parameter() { name = "Enabled" },
                 });
 
-                mainMenu.controls.Add(CreateControl(clips.Min.name));
-                mainMenu.controls.Add(CreateControl(clips.Max.name));
-                mainMenu.controls.Add(CreateControl(clips.Monochrome.name));
-                mainMenu.controls.Add(CreateControl(clips.ShadowEnv.name));
-                mainMenu.controls.Add(CreateControl(clips.AsUnlit.name));
-                mainMenu.controls.Add(CreateControl(clips.VertexLight.name));
+                foreach(var control in Controls)
+                {
+                    mainMenu.controls.Add(new VRCExpressionsMenu.Control()
+                    {
+                        name = control.Name,
+                        type = VRCExpressionsMenu.Control.ControlType.RadialPuppet,
+                        subParameters = new VRCExpressionsMenu.Control.Parameter[] { new VRCExpressionsMenu.Control.Parameter() { name = control.Name } }
+                    });
+                }
 
                 x.menuToAppend = new VRCExpressionsMenu()
                 {
@@ -190,26 +192,53 @@ namespace gomoru.su.LightController
                 }.AddTo(fx);
             });
 
+            go.GetOrAddComponent<ModularAvatarParameters>(component =>
+            {
+                component.parameters.AddRange(fx.parameters.Select(x =>
+                {
+                    var p = x.ToParameterConfig();
+                    p.remapTo = $"{ParameterNamePrefix}{p.nameOrPrefix}";
+                    return p;
+                }));
+            });
+        }
+
+        private static ParameterConfig ToParameterConfig(this AnimatorControllerParameter parameter)
+        {
+            var result = new ParameterConfig()
+            {
+                nameOrPrefix = parameter.name,
+                saved = true,
+            };
+            switch(parameter.type)
+            {
+                case AnimatorControllerParameterType.Float:
+                    result.syncType = ParameterSyncType.Float;
+                    result.defaultValue = parameter.defaultFloat;
+                    break;
+                case AnimatorControllerParameterType.Int:
+                    result.syncType = ParameterSyncType.Int;
+                    result.defaultValue = parameter.defaultInt;
+                    break;
+                case AnimatorControllerParameterType.Bool:
+                    result.syncType = ParameterSyncType.Bool;
+                    result.defaultValue = parameter.defaultBool ? 1 : 0;
+                    break;
+            }
+            return result;
         }
 
         private static AnimationClip CreateAnim(this AnimatorController parent, string name = null) => new AnimationClip() { name = name }.AddTo(parent);
         private static AnimatorState CreateState(this AnimatorStateMachine parent, string name, AnimationClip motion = null) => new AnimatorState() { name = name, writeDefaultValues = false, motion = motion }.HideInHierarchy().AddTo(parent);
-        private static VRCExpressionsMenu.Control CreateControl(string name) => new VRCExpressionsMenu.Control()
+        
+        private sealed class ParameterControl
         {
-            name = name,
-            type = VRCExpressionsMenu.Control.ControlType.RadialPuppet,
-            parameter = new VRCExpressionsMenu.Control.Parameter() { name = $"Control{name}" },
-            subParameters = new VRCExpressionsMenu.Control.Parameter[] { new VRCExpressionsMenu.Control.Parameter() { name = name } }
-        };
+            public string Name;
+            public Action<(string Name, AnimatorController FX, LightControllerGenerator Generator, LilToonParameters Parameters)> AddParameters;
+            public Action<(string Path, Type Type, AnimationClip Default, AnimationClip Control, Material Material, LightControllerGenerator Generator, LilToonParameters Parameters)> SetAnimationCurves;
+            public AnimationClip Control;
+            public AnimationClip Default;
 
-        private static void SetParametersFromMaterial(ref LilToonLightParameters parameters, Material material)
-        {
-            parameters.LightMinLimit = material.GetFloat($"_{nameof(parameters.LightMinLimit)}");
-            parameters.LightMaxLimit = material.GetFloat($"_{nameof(parameters.LightMaxLimit)}");
-            parameters.MonochromeLighting = material.GetFloat($"_{nameof(parameters.MonochromeLighting)}");
-            parameters.ShadowEnvStrength = material.GetFloat($"_{nameof(parameters.ShadowEnvStrength)}");
-            parameters.AsUnlit = material.GetFloat($"_{nameof(parameters.AsUnlit)}");
-            parameters.VertexLightStrength = material.GetFloat($"_{nameof(parameters.VertexLightStrength)}");
         }
     }
 }

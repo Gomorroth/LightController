@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 
 namespace gomoru.su.LightController
@@ -25,12 +23,12 @@ namespace gomoru.su.LightController
             UseMaterialPropertyAsDefault = serializedObject.FindProperty(nameof(LightControllerGenerator.UseMaterialPropertyAsDefault));
             var param = DefaultParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.DefaultParameters));
 
-            LightMinLimit = param.FindPropertyRelative(nameof(LilToonLightParameters.LightMinLimit));
-            LightMaxLimit = param.FindPropertyRelative(nameof(LilToonLightParameters.LightMaxLimit));
-            MonochromeLighting = param.FindPropertyRelative(nameof(LilToonLightParameters.MonochromeLighting));
-            ShadowEnvStrength = param.FindPropertyRelative(nameof(LilToonLightParameters.ShadowEnvStrength));
-            AsUnlit = param.FindPropertyRelative(nameof(LilToonLightParameters.AsUnlit));
-            VertexLightStrength = param.FindPropertyRelative(nameof(LilToonLightParameters.VertexLightStrength));
+            LightMinLimit = param.FindPropertyRelative(nameof(LilToonParameters.LightMinLimit));
+            LightMaxLimit = param.FindPropertyRelative(nameof(LilToonParameters.LightMaxLimit));
+            MonochromeLighting = param.FindPropertyRelative(nameof(LilToonParameters.MonochromeLighting));
+            ShadowEnvStrength = param.FindPropertyRelative(nameof(LilToonParameters.ShadowEnvStrength));
+            AsUnlit = param.FindPropertyRelative(nameof(LilToonParameters.AsUnlit));
+            VertexLightStrength = param.FindPropertyRelative(nameof(LilToonParameters.VertexLightStrength));
         }
 
         public override void OnInspectorGUI ()

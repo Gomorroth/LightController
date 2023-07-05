@@ -13,6 +13,9 @@ namespace gomoru.su.LightController
         public float LightMaxLimitMax = 1;
 
         [SerializeField]
+        public bool SaveParameters = true;
+
+        [SerializeField]
         public bool UseMaterialPropertyAsDefault = false;
 
         [SerializeField]

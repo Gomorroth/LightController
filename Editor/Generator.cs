@@ -197,6 +197,7 @@ namespace gomoru.su.LightController
                 component.parameters.AddRange(fx.parameters.Select(x =>
                 {
                     var p = x.ToParameterConfig();
+                    p.saved = generator.SaveParameters;
                     p.remapTo = $"{ParameterNamePrefix}{p.nameOrPrefix}";
                     return p;
                 }));
@@ -208,7 +209,6 @@ namespace gomoru.su.LightController
             var result = new ParameterConfig()
             {
                 nameOrPrefix = parameter.name,
-                saved = true,
             };
             switch(parameter.type)
             {

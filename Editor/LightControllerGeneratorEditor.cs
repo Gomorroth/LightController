@@ -8,27 +8,15 @@ namespace gomoru.su.LightController
     {
         private SerializedProperty LightMaxLimitMax;
         private SerializedProperty UseMaterialPropertyAsDefault;
+        private SerializedProperty SaveParameters;
         private SerializedProperty DefaultParameters;
-
-        private SerializedProperty LightMinLimit;
-        private SerializedProperty LightMaxLimit;
-        private SerializedProperty MonochromeLighting;
-        private SerializedProperty ShadowEnvStrength;
-        private SerializedProperty AsUnlit;
-        private SerializedProperty VertexLightStrength;
 
         private void OnEnable()
         {
             LightMaxLimitMax = serializedObject.FindProperty(nameof(LightControllerGenerator.LightMaxLimitMax));
             UseMaterialPropertyAsDefault = serializedObject.FindProperty(nameof(LightControllerGenerator.UseMaterialPropertyAsDefault));
-            var param = DefaultParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.DefaultParameters));
-
-            LightMinLimit = param.FindPropertyRelative(nameof(LilToonParameters.LightMinLimit));
-            LightMaxLimit = param.FindPropertyRelative(nameof(LilToonParameters.LightMaxLimit));
-            MonochromeLighting = param.FindPropertyRelative(nameof(LilToonParameters.MonochromeLighting));
-            ShadowEnvStrength = param.FindPropertyRelative(nameof(LilToonParameters.ShadowEnvStrength));
-            AsUnlit = param.FindPropertyRelative(nameof(LilToonParameters.AsUnlit));
-            VertexLightStrength = param.FindPropertyRelative(nameof(LilToonParameters.VertexLightStrength));
+            SaveParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.SaveParameters));
+            DefaultParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.DefaultParameters));
         }
 
         public override void OnInspectorGUI ()
@@ -37,6 +25,7 @@ namespace gomoru.su.LightController
             EditorGUI.BeginChangeCheck();
 
             EditorGUILayout.PropertyField(LightMaxLimitMax, Label("Maximum value of Light Max Limit"));
+            EditorGUILayout.PropertyField(SaveParameters);
             EditorGUILayout.PropertyField(UseMaterialPropertyAsDefault, Label("Use material proeperty value as Default value"));
             EditorGUI.BeginDisabledGroup(UseMaterialPropertyAsDefault.boolValue);
             EditorGUILayout.PropertyField(DefaultParameters);

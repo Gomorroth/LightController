@@ -2,22 +2,34 @@ name: Build Release
 
 on: 
   workflow_dispatch:
-
-env:
-  packageName: "gomoru.su.light-controller"
+  push:
+    paths:
+      - "package.json"
 
 permissions:
   contents: write
 
 jobs:
   build:
+    if: ${{ github.event.before != '0000000000000000000000000000000000000000' }}
     runs-on: ubuntu-latest
     steps:
     
       - name: Checkout
         uses: actions/checkout@v3
-    
-      - name: get version
+
+      - name: Get packageName
+        id: packageName
+        uses: notiz-dev/github-action-json-property@7c8cf5cc36eb85d8d287a8086a39dac59628eb31
+        with: 
+            path: "package.json"
+            prop_path: "name"
+          
+      - name: Set PackageName Variable
+        run: |
+          echo "packageName=${{steps.packageName.outputs.prop}}" >> $GITHUB_ENV
+          
+      - name: Get version
         id: version
         uses: notiz-dev/github-action-json-property@7c8cf5cc36eb85d8d287a8086a39dac59628eb31
         with: 
@@ -29,16 +41,32 @@ jobs:
           echo "zipFile=${{ env.packageName }}-${{ steps.version.outputs.prop }}".zip >> $GITHUB_ENV
           echo "unityPackage=${{ env.packageName }}-${{ steps.version.outputs.prop }}.unitypackage" >> $GITHUB_ENV
         
+      - name: Move files and List targets
+        run: |
+          shopt -s extglob
+          mkdir -p "Packages/${{env.packageName}}"
+          mv !("Packages") "Packages/${{env.packageName}}/"
+          find "Packages/${{env.packageName}}/" -name \*.meta >> metaList
+
       - name: Create Zip
         uses: thedoctor0/zip-release@09336613be18a8208dfa66bd57efafd9e2685657
         with:
           type: "zip"
-          filename: "${{env.zipFile}}" # make the zip file two directories up, since we start two directories in above
+          directory: "./Packages/${{env.packageName}}"
+          filename: "../../${{env.zipFile}}"
+          exclusions: '*.git*'
+
+      - name: Create UnityPackage
+        uses: pCYSl5EDgo/create-unitypackage@cfcd3cf0391a5ef1306342794866a9897c32af0b
+        with:
+          package-path: "${{env.unityPackage}}"
+          include-files: metaList
 
       - name: Make Release
         uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5
         with:
           tag_name: ${{ steps.version.outputs.prop }}
           files: |
-            ${{ env.zipFile }}
-            package.json
+            ${{env.zipFile}}
+            ${{env.unityPackage}}
+            Packages/${{env.packageName}}/package.json

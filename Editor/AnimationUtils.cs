@@ -23,8 +23,9 @@ namespace gomoru.su.LightController
             var curve = _singleton;
             var keys = _keyframes2;
             _ = keys.Length;
-            keys[0] = new Keyframe(0, start);
-            keys[1] = new Keyframe(1/60f, end);
+            float num = (end - start) / (1 / 60f);
+            keys[0] = new Keyframe(0, start, 0, num);
+            keys[1] = new Keyframe(1/60f, end, num, 0);
             curve.keys = keys;
             return curve;
         }

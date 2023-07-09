@@ -1,7 +1,6 @@
 ﻿using nadena.dev.modular_avatar.core;
 using System;
 using System.Linq;
-using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VRC.SDK3.Avatars.ScriptableObjects;

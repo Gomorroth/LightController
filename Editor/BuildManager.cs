@@ -1,5 +1,6 @@
 ﻿using UnityEditor;
 using UnityEngine;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDKBase.Editor.BuildPipeline;
 
 namespace gomoru.su.LightController
@@ -13,7 +14,7 @@ namespace gomoru.su.LightController
         {
             RuntimeHelper.OnAwake = generator =>
             {
-                var avatar = generator.gameObject.FindAvatarFromParent();
+                var avatar = generator.GetComponentInParent<VRCAvatarDescriptor>();
                 if (avatar != null )
                 {
                     generator.gameObject.SetActive(false);

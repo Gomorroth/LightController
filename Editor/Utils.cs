@@ -2,11 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
-using VRC.SDK3.Avatars.Components;
 
 namespace gomoru.su.LightController
 {
@@ -33,17 +31,6 @@ namespace gomoru.su.LightController
             AssetDatabase.CreateAsset(fx, System.IO.Path.Combine(Utils.GetGeneratedAssetsFolder(), $"{fx.name}.controller"));
             AssetDatabase.SaveAssets();
             return fx;
-        }
-
-        public static VRCAvatarDescriptor FindAvatarFromParent(this GameObject obj)
-        {
-            var tr = obj.transform;
-            VRCAvatarDescriptor avatar = null;
-            while (tr != null && (avatar = tr.GetComponent<VRCAvatarDescriptor>()) == null)
-            {
-                tr = tr.parent;
-            }
-            return avatar;
         }
 
         public static T GetOrAddComponent<T>(this GameObject obj, Action<T> action = null) where T : Component
@@ -150,18 +137,6 @@ namespace gomoru.su.LightController
             else throw new ArgumentException(nameof(defaultValue));
             controller.AddParameter(param);
             return controller;
-        }
-    }
-
-    public static class ValueTupleHelper
-    {
-        public static int Count<TTuple>(this TTuple t) where TTuple : struct, ITuple => t.Length;
-        public static IEnumerable<object> ToEnumerable<TTuple>(this TTuple tuple) where TTuple : struct, ITuple
-        {
-            for(int i = 0; i < tuple.Length; i++)
-            {
-                yield return tuple[i];
-            }
         }
     }
 }

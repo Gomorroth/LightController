@@ -1,5 +1,6 @@
 ﻿using nadena.dev.modular_avatar.core;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEditor.Animations;
 using UnityEngine;
@@ -22,7 +23,8 @@ namespace gomoru.su.LightController
                 {
                     args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.LightMinLimit)}", AnimationUtils.Constant(args.Parameters.LightMinLimit));
                     args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.LightMinLimit)}", AnimationUtils.Linear(0, 1));
-                }
+                },
+                CreateMenu = args => args.Controls.CreateRadialPuppet(args.Name),
             },
             new ParameterControl()
             {
@@ -32,7 +34,8 @@ namespace gomoru.su.LightController
                 {
                     args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.LightMaxLimit)}", AnimationUtils.Constant(args.Parameters.LightMaxLimit));
                     args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.LightMaxLimit)}", AnimationUtils.Linear(0, args.Generator.LightMaxLimitMax));
-                }
+                },
+                CreateMenu = args => args.Controls.CreateRadialPuppet(args.Name),
             },
             new ParameterControl()
             {
@@ -42,7 +45,8 @@ namespace gomoru.su.LightController
                 {
                     args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.MonochromeLighting)}", AnimationUtils.Constant(args.Parameters.MonochromeLighting));
                     args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.MonochromeLighting)}", AnimationUtils.Linear(0, 1));
-                }
+                },
+                CreateMenu = args => args.Controls.CreateRadialPuppet(args.Name),
             },
             new ParameterControl()
             {
@@ -52,7 +56,8 @@ namespace gomoru.su.LightController
                 {
                     args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.ShadowEnvStrength)}", AnimationUtils.Constant(args.Parameters.ShadowEnvStrength));
                     args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.ShadowEnvStrength)}", AnimationUtils.Linear(0, 1));
-                }
+                },
+                CreateMenu = args => args.Controls.CreateRadialPuppet(args.Name),
             },
             new ParameterControl()
             {
@@ -62,7 +67,8 @@ namespace gomoru.su.LightController
                 {
                     args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.AsUnlit)}", AnimationUtils.Constant(args.Parameters.AsUnlit));
                     args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.AsUnlit)}", AnimationUtils.Linear(0, 1));
-                }
+                },
+                CreateMenu = args => args.Controls.CreateRadialPuppet(args.Name),
             },
             new ParameterControl()
             {
@@ -72,7 +78,8 @@ namespace gomoru.su.LightController
                 {
                     args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.VertexLightStrength)}", AnimationUtils.Constant(args.Parameters.VertexLightStrength));
                     args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.VertexLightStrength)}", AnimationUtils.Linear(0, 1));
-                }
+                },
+                CreateMenu = args => args.Controls.CreateRadialPuppet(args.Name),
             },
         };
 
@@ -166,14 +173,22 @@ namespace gomoru.su.LightController
                     parameter = new VRCExpressionsMenu.Control.Parameter() { name = "Enabled" },
                 });
 
-                foreach(var control in Controls)
+                Dictionary<string, VRCExpressionsMenu> category = new Dictionary<string, VRCExpressionsMenu>();
+
+                foreach (var control in Controls)
                 {
-                    mainMenu.controls.Add(new VRCExpressionsMenu.Control()
+                    var menu = mainMenu;
+                    if (!string.IsNullOrEmpty(control.Group))
                     {
-                        name = control.Name,
-                        type = VRCExpressionsMenu.Control.ControlType.RadialPuppet,
-                        subParameters = new VRCExpressionsMenu.Control.Parameter[] { new VRCExpressionsMenu.Control.Parameter() { name = control.Name } }
-                    });
+                        if (!category.TryGetValue(control.Group, out menu))
+                        {
+                            menu = new VRCExpressionsMenu() { name = $"{control.Group} Menu" }.AddTo(fx);
+                            mainMenu.controls.Add(new VRCExpressionsMenu.Control() { name = control.Group, type = VRCExpressionsMenu.Control.ControlType.SubMenu, subMenu = menu });
+                            category.Add(control.Group, menu);
+                        }
+                    }
+
+                    control.CreateMenu((control.Name, control, menu.controls));
                 }
 
                 x.menuToAppend = new VRCExpressionsMenu()
@@ -227,17 +242,47 @@ namespace gomoru.su.LightController
             return result;
         }
 
+        private static List<VRCExpressionsMenu.Control> CreateRadialPuppet(this List<VRCExpressionsMenu.Control> controls, string name, string parameterName = null)
+        {
+            var control = new VRCExpressionsMenu.Control()
+            {
+                name = name,
+                type = VRCExpressionsMenu.Control.ControlType.RadialPuppet,
+                subParameters = new VRCExpressionsMenu.Control.Parameter[] { new VRCExpressionsMenu.Control.Parameter() { name = parameterName ?? name } }
+            };
+            controls.Add(control);
+            return controls;
+        }
+
+        private static List<VRCExpressionsMenu.Control> CreateToggle(this List<VRCExpressionsMenu.Control> controls, string name, string parameterName = null)
+        {
+            var control = new VRCExpressionsMenu.Control()
+            {
+                name = name,
+                type = VRCExpressionsMenu.Control.ControlType.Toggle,
+                parameter = new VRCExpressionsMenu.Control.Parameter() { name = parameterName ?? name },
+            };
+            controls.Add(control);
+            return controls;
+        }
+
         private static AnimationClip CreateAnim(this AnimatorController parent, string name = null) => new AnimationClip() { name = name }.AddTo(parent);
         private static AnimatorState CreateState(this AnimatorStateMachine parent, string name, AnimationClip motion = null) => new AnimatorState() { name = name, writeDefaultValues = false, motion = motion }.HideInHierarchy().AddTo(parent);
         
         private sealed class ParameterControl
         {
             public string Name;
+            public string Group = null;
             public Action<(string Name, AnimatorController FX, LightControllerGenerator Generator, LilToonParameters Parameters)> AddParameters;
             public Action<(string Path, Type Type, AnimationClip Default, AnimationClip Control, Material Material, LightControllerGenerator Generator, LilToonParameters Parameters)> SetAnimationCurves;
+            public Action<(string Name, ParameterControl Self, List<VRCExpressionsMenu.Control> Controls)> CreateMenu; 
             public AnimationClip Control;
             public AnimationClip Default;
-
         }
     }
+}
+
+namespace System.Runtime.CompilerServices
+{
+    public static class IsExternalInit {}
 }

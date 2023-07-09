@@ -13,12 +13,14 @@ namespace gomoru.su.LightController
         private const string PropertyNamePrefix = "material._";
         private const string ParameterNamePrefix = "LightController";
 
+        private const string GroupName_Backlight = "Backlight";
+
         private static readonly ParameterControl[] Controls = new ParameterControl[]
         {
             new ParameterControl()
             {
                 Name = "Min",
-                AddParameters = args => args.FX.AddParameter(args.Name, args.Parameters.LightMinLimit),
+                Parameters = args => args.List.AddParameter(args.Name, args.Parameters.LightMinLimit),
                 SetAnimationCurves = args =>
                 {
                     args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.LightMinLimit)}", AnimationUtils.Constant(args.Parameters.LightMinLimit));
@@ -29,7 +31,7 @@ namespace gomoru.su.LightController
             new ParameterControl()
             {
                 Name = "Max",
-                AddParameters = args => args.FX.AddParameter(args.Name, (1 + args.Parameters.LightMaxLimit) / args.Generator.LightMaxLimitMax),
+                Parameters = args => args.List.AddParameter(args.Name, (1 + args.Parameters.LightMaxLimit) / args.Generator.LightMaxLimitMax),
                 SetAnimationCurves = args =>
                 {
                     args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.LightMaxLimit)}", AnimationUtils.Constant(args.Parameters.LightMaxLimit));
@@ -40,7 +42,7 @@ namespace gomoru.su.LightController
             new ParameterControl()
             {
                 Name = "Monochrome",
-                AddParameters = args => args.FX.AddParameter(args.Name, args.Parameters.MonochromeLighting),
+                Parameters = args => args.List.AddParameter(args.Name, args.Parameters.MonochromeLighting),
                 SetAnimationCurves = args =>
                 {
                     args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.MonochromeLighting)}", AnimationUtils.Constant(args.Parameters.MonochromeLighting));
@@ -51,7 +53,7 @@ namespace gomoru.su.LightController
             new ParameterControl()
             {
                 Name = "ShadowEnvStrength",
-                AddParameters = args => args.FX.AddParameter(args.Name, args.Parameters.ShadowEnvStrength),
+                Parameters = args => args.List.AddParameter(args.Name, args.Parameters.ShadowEnvStrength),
                 SetAnimationCurves = args =>
                 {
                     args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.ShadowEnvStrength)}", AnimationUtils.Constant(args.Parameters.ShadowEnvStrength));
@@ -62,7 +64,7 @@ namespace gomoru.su.LightController
             new ParameterControl()
             {
                 Name = "AsUnlit",
-                AddParameters = args => args.FX.AddParameter(args.Name, args.Parameters.AsUnlit),
+                Parameters = args => args.List.AddParameter(args.Name, args.Parameters.AsUnlit),
                 SetAnimationCurves = args =>
                 {
                     args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.AsUnlit)}", AnimationUtils.Constant(args.Parameters.AsUnlit));
@@ -73,7 +75,7 @@ namespace gomoru.su.LightController
             new ParameterControl()
             {
                 Name = "VertexLightStrength",
-                AddParameters = args => args.FX.AddParameter(args.Name, args.Parameters.VertexLightStrength),
+                Parameters = args => args.List.AddParameter(args.Name, args.Parameters.VertexLightStrength),
                 SetAnimationCurves = args =>
                 {
                     args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.VertexLightStrength)}", AnimationUtils.Constant(args.Parameters.VertexLightStrength));
@@ -81,6 +83,19 @@ namespace gomoru.su.LightController
                 },
                 CreateMenu = args => args.Controls.CreateRadialPuppet(args.Name),
             },
+
+            new ParameterControl()
+            {
+                Name = "UseBacklight",
+                Group = GroupName_Backlight,
+                Parameters = args => args.List.AddParameter(args.Name, args.Parameters.UseBacklight ? 1f : 0f, true),
+                SetAnimationCurves = args =>
+                {
+                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.UseBacklight)}", AnimationUtils.Constant(args.Parameters.UseBacklight ? 1 : 0));
+                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.UseBacklight)}", AnimationUtils.Linear(0, 1));
+                },
+                CreateMenu = args => args.Controls.CreateToggle("Enable", args.Name),
+            }
         };
 
         public static void Generate(GameObject avatarObject, LightControllerGenerator generator)
@@ -101,6 +116,9 @@ namespace gomoru.su.LightController
                             y.shader.EnumeratePropertyNames().Any(z => z == $"_{nameof(LilToonParameters.LightMinLimit)}"))
                         ))
                 .Where(x => x.Material != null);
+
+            List<ParameterControl.Parameter> parameters = new List<ParameterControl.Parameter>();
+            parameters.AddParameter("Enabled", false);
 
             foreach (var control in Controls)
             {
@@ -150,11 +168,16 @@ namespace gomoru.su.LightController
                 stateMachine.AddState(idle, stateMachine.entryPosition + new Vector3(150, 0));
                 stateMachine.AddState(state, stateMachine.entryPosition + new Vector3(150, 50));
 
-                control.AddParameters((control.Name, fx, generator, @params));
-
                 fx.AddLayer(layer);
+
+                control.Parameters((control.Name, generator, @params, parameters));
             }
 
+            foreach(var parameter in parameters)
+            {
+                Debug.Log(parameter.Name);
+                fx.AddParameter(parameter.ToControllerParameter());
+            }
             go.GetOrAddComponent<ModularAvatarMergeAnimator>(x =>
             {
                 x.layerType = VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX;
@@ -208,7 +231,7 @@ namespace gomoru.su.LightController
 
             go.GetOrAddComponent<ModularAvatarParameters>(component =>
             {
-                component.parameters.AddRange(fx.parameters.Select(x =>
+                component.parameters.AddRange(parameters.Select(x =>
                 {
                     var p = x.ToParameterConfig();
                     p.saved = generator.SaveParameters;
@@ -268,16 +291,88 @@ namespace gomoru.su.LightController
 
         private static AnimationClip CreateAnim(this AnimatorController parent, string name = null) => new AnimationClip() { name = name }.AddTo(parent);
         private static AnimatorState CreateState(this AnimatorStateMachine parent, string name, AnimationClip motion = null) => new AnimatorState() { name = name, writeDefaultValues = false, motion = motion }.HideInHierarchy().AddTo(parent);
-        
+
+        private static List<ParameterControl.Parameter> AddParameter<T>(this List<ParameterControl.Parameter> list, string name, T value, bool boolAsFloat = false)
+        {
+            list.Add(new ParameterControl.Parameter()
+            {
+                Name = name,
+                Value = 
+                    typeof(T) == typeof(int) ? (int)(object)value :
+                    typeof(T) == typeof(float) ? (float)(object)value :
+                    typeof(T) == typeof(bool) ? (bool)(object)value ? 1f : 0f :
+                    0,
+                ParameterType =
+                    typeof(T) == typeof(int) ? AnimatorControllerParameterType.Int :
+                    typeof(T) == typeof(float) ? AnimatorControllerParameterType.Float :
+                    typeof(T) == typeof(bool) ? AnimatorControllerParameterType.Bool :
+                    0,
+                BoolAsFloat = boolAsFloat,
+            });
+            return list;
+        }
+
         private sealed class ParameterControl
         {
             public string Name;
             public string Group = null;
-            public Action<(string Name, AnimatorController FX, LightControllerGenerator Generator, LilToonParameters Parameters)> AddParameters;
+            public Action<(string Name, LightControllerGenerator Generator, LilToonParameters Parameters, List<Parameter> List)> Parameters;
             public Action<(string Path, Type Type, AnimationClip Default, AnimationClip Control, Material Material, LightControllerGenerator Generator, LilToonParameters Parameters)> SetAnimationCurves;
             public Action<(string Name, ParameterControl Self, List<VRCExpressionsMenu.Control> Controls)> CreateMenu; 
             public AnimationClip Control;
             public AnimationClip Default;
+
+            public struct Parameter
+            {
+                public string Name;
+                public float Value;
+                public AnimatorControllerParameterType ParameterType;
+                public bool BoolAsFloat;
+
+                public ParameterConfig ToParameterConfig()
+                {
+                    var result = new ParameterConfig()
+                    {
+                        nameOrPrefix = Name,
+                        defaultValue = Value,
+                    };
+                    switch (ParameterType)
+                    {
+                        case AnimatorControllerParameterType.Float:
+                            result.syncType = ParameterSyncType.Float;
+                            break;
+                        case AnimatorControllerParameterType.Int:
+                            result.syncType = ParameterSyncType.Int;
+                            break;
+                        case AnimatorControllerParameterType.Bool:
+                            result.syncType = ParameterSyncType.Bool;
+                            break;
+                    }
+                    return result;
+                }
+
+                public AnimatorControllerParameter ToControllerParameter()
+                {
+                    var result = new AnimatorControllerParameter()
+                    {
+                        name = Name,
+                        type = ParameterType == AnimatorControllerParameterType.Bool && BoolAsFloat ? AnimatorControllerParameterType.Float : ParameterType,
+                    };
+                    switch (result.type)
+                    {
+                        case AnimatorControllerParameterType.Float:
+                            result.defaultFloat = Value;
+                            break;
+                        case AnimatorControllerParameterType.Int:
+                            result.defaultInt = (int)Value;
+                            break;
+                        case AnimatorControllerParameterType.Bool:
+                            result.defaultBool = Value != 0;
+                            break;
+                    }
+                    return result;
+                }
+            }
         }
     }
 }

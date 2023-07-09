@@ -281,8 +281,3 @@ namespace gomoru.su.LightController
         }
     }
 }
-
-namespace System.Runtime.CompilerServices
-{
-    public static class IsExternalInit {}
-}

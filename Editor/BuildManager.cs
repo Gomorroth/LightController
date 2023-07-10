@@ -17,10 +17,11 @@ namespace gomoru.su.LightController
                 var avatar = generator.GetComponentInParent<VRCAvatarDescriptor>();
                 if (avatar != null )
                 {
-                    generator.gameObject.SetActive(false);
+                    var obj = generator.gameObject;
+                    obj.SetActive(false);
                     Process(avatar.gameObject, generator);
                     GameObject.DestroyImmediate(generator);
-                    generator.gameObject.SetActive(true);
+                    obj.SetActive(true);
                 }
             };
         }

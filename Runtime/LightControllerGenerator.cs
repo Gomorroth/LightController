@@ -14,6 +14,9 @@ namespace gomoru.su.LightController
         public bool SaveParameters = true;
 
         [SerializeField]
+        public bool AddBacklightControl = false;
+
+        [SerializeField]
         public bool UseMaterialPropertyAsDefault = false;
 
         [SerializeField]
@@ -26,9 +29,14 @@ namespace gomoru.su.LightController
 
 #endif
 
+        private void OnEnable() { }
+
         private void Awake()
         {
-            RuntimeHelper.OnAwake?.Invoke(this);
+            if (enabled)
+                RuntimeHelper.OnAwake?.Invoke(this);
+            else
+                Destroy(this);
         }
     }
 }

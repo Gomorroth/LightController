@@ -28,10 +28,11 @@ namespace gomoru.su.LightController
         public float VertexLightStrength = 0f;
 
         [SerializeField]
+        [Header("Backlight")]
         public bool UseBacklight = false;
 
-        [SerializeField, Range(0f, 1f)]
-        public float BacklightStrength = 1;
+        [SerializeField]
+        public Color BacklightColor = new Color(0.85f, 0.8f, 0.7f, 1.0f);
 
         [SerializeField, Range(0f, 1f)]
         public float BacklightMainStrength = 0;
@@ -68,7 +69,7 @@ namespace gomoru.su.LightController
             VertexLightStrength = material.GetFloat($"_{nameof(VertexLightStrength)}");
 
             UseBacklight = material.GetInt($"_{nameof(UseBacklight)}") != 0;
-            BacklightStrength = material.GetColor($"_BacklightColor").a;
+            BacklightColor = material.GetColor($"_{BacklightColor}");
             BacklightMainStrength = material.GetFloat($"_{nameof(BacklightMainStrength)}");
             BacklightReceiveShadow = material.GetInt($"_{nameof(BacklightReceiveShadow)}") != 0;
             BacklightBackfaceMask = material.GetInt($"_{nameof(BacklightBackfaceMask)}") != 0;

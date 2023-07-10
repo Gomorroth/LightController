@@ -88,14 +88,54 @@ namespace gomoru.su.LightController
             {
                 Name = "UseBacklight",
                 Group = GroupName_Backlight,
-                Parameters = args => args.List.AddParameter(args.Name, args.Parameters.UseBacklight ? 1f : 0f, true),
+                Condition = args => args.AddBacklightControl,
+                Parameters = args => args.List.AddParameter(args.Name, args.Parameters.UseBacklight, true),
                 SetAnimationCurves = args =>
                 {
                     args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.UseBacklight)}", AnimationUtils.Constant(args.Parameters.UseBacklight ? 1 : 0));
                     args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.UseBacklight)}", AnimationUtils.Linear(0, 1));
                 },
-                CreateMenu = args => args.Controls.CreateToggle("Enable", args.Name),
-            }
+                CreateMenu = args => args.Controls.CreateToggle("Use Backlight", args.Name),
+            },
+            new ParameterControl()
+            {
+                Name = "BacklightStrength",
+                Group = GroupName_Backlight,
+                Condition = args => args.AddBacklightControl,
+                Parameters = args => args.List.AddParameter(args.Name, args.Parameters.BacklightColor.a),
+                SetAnimationCurves = args =>
+                {
+                    var color = args.Parameters.BacklightColor;
+                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.r", AnimationUtils.Constant(color.r));
+                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.g", AnimationUtils.Constant(color.g));
+                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.b", AnimationUtils.Constant(color.b));
+                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.a", AnimationUtils.Constant(color.a));
+
+                    var zero = default(Color);
+                    Color.RGBToHSV(color, out zero.r , out zero.g, out zero.b);
+                    zero.b = 0;
+                    zero = Color.HSVToRGB(zero.r, zero.g, zero.b);
+
+                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.r", AnimationUtils.Linear(zero.r, color.r));
+                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.g", AnimationUtils.Linear(zero.g, color.g));
+                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.b", AnimationUtils.Linear(zero.b, color.b));
+                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.a", AnimationUtils.Linear(zero.a, color.a));
+                },
+                CreateMenu = args => args.Controls.CreateRadialPuppet("Strength", args.Name),
+            },
+            new ParameterControl()
+            {
+                Name = "BacklightMainStrength",
+                Group = GroupName_Backlight,
+                Condition = args => args.AddBacklightControl,
+                Parameters = args => args.List.AddParameter(args.Name, args.Parameters.BacklightMainStrength),
+                SetAnimationCurves = args =>
+                {
+                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightMainStrength)}", AnimationUtils.Constant(args.Parameters.BacklightMainStrength));
+                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightMainStrength)}", AnimationUtils.Linear(0, 1));
+                },
+                CreateMenu = args => args.Controls.CreateToggle("MainStrength", args.Name),
+            },
         };
 
         public static void Generate(GameObject avatarObject, LightControllerGenerator generator)
@@ -120,7 +160,9 @@ namespace gomoru.su.LightController
             List<ParameterControl.Parameter> parameters = new List<ParameterControl.Parameter>();
             parameters.AddParameter("Enabled", false);
 
-            foreach (var control in Controls)
+            var controls = Controls.Where(x => x.Condition(generator)).ToArray();
+
+            foreach (var control in controls)
             {
                 control.Default = fx.CreateAnim($"{control.Name} Default");
                 control.Control = fx.CreateAnim(control.Name);
@@ -138,7 +180,7 @@ namespace gomoru.su.LightController
                     @params.SetValuesFromMaterial(material);
                 }
 
-                foreach(var control in Controls)
+                foreach(var control in controls)
                 {
                     control.SetAnimationCurves((path, type, control.Default, control.Control, material, generator, @params));
                 }
@@ -146,7 +188,7 @@ namespace gomoru.su.LightController
 
             fx.AddParameter("Enabled", AnimatorControllerParameterType.Bool);
 
-            foreach (var control in Controls)
+            foreach (var control in controls)
             {
                 var layer = new AnimatorControllerLayer()
                 {
@@ -178,6 +220,7 @@ namespace gomoru.su.LightController
                 Debug.Log(parameter.Name);
                 fx.AddParameter(parameter.ToControllerParameter());
             }
+
             go.GetOrAddComponent<ModularAvatarMergeAnimator>(x =>
             {
                 x.layerType = VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX;
@@ -198,7 +241,7 @@ namespace gomoru.su.LightController
 
                 Dictionary<string, VRCExpressionsMenu> category = new Dictionary<string, VRCExpressionsMenu>();
 
-                foreach (var control in Controls)
+                foreach (var control in controls)
                 {
                     var menu = mainMenu;
                     if (!string.IsNullOrEmpty(control.Group))
@@ -316,6 +359,7 @@ namespace gomoru.su.LightController
         {
             public string Name;
             public string Group = null;
+            public Func<LightControllerGenerator, bool> Condition = _ => true;
             public Action<(string Name, LightControllerGenerator Generator, LilToonParameters Parameters, List<Parameter> List)> Parameters;
             public Action<(string Path, Type Type, AnimationClip Default, AnimationClip Control, Material Material, LightControllerGenerator Generator, LilToonParameters Parameters)> SetAnimationCurves;
             public Action<(string Name, ParameterControl Self, List<VRCExpressionsMenu.Control> Controls)> CreateMenu; 

@@ -1,5 +1,6 @@
 ﻿using UnityEditor;
 using UnityEngine;
+using VRC.SDK3.Avatars.Components;
 
 namespace gomoru.su.LightController
 {
@@ -7,15 +8,19 @@ namespace gomoru.su.LightController
     public sealed class LightControllerGeneratorEditor : Editor
     {
         private SerializedProperty LightMaxLimitMax;
-        private SerializedProperty UseMaterialPropertyAsDefault;
         private SerializedProperty SaveParameters;
+        private SerializedProperty AddBacklightControl;
+        private SerializedProperty UseMaterialPropertyAsDefault;
         private SerializedProperty DefaultParameters;
+
+        private bool _debugFoldoutOpen;
 
         private void OnEnable()
         {
             LightMaxLimitMax = serializedObject.FindProperty(nameof(LightControllerGenerator.LightMaxLimitMax));
-            UseMaterialPropertyAsDefault = serializedObject.FindProperty(nameof(LightControllerGenerator.UseMaterialPropertyAsDefault));
             SaveParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.SaveParameters));
+            AddBacklightControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddBacklightControl));
+            UseMaterialPropertyAsDefault = serializedObject.FindProperty(nameof(LightControllerGenerator.UseMaterialPropertyAsDefault));
             DefaultParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.DefaultParameters));
         }
 
@@ -26,14 +31,31 @@ namespace gomoru.su.LightController
 
             EditorGUILayout.PropertyField(LightMaxLimitMax, Label("Maximum value of Light Max Limit"));
             EditorGUILayout.PropertyField(SaveParameters);
+            EditorGUILayout.PropertyField(AddBacklightControl);
             EditorGUILayout.PropertyField(UseMaterialPropertyAsDefault, Label("Use material proeperty value as Default value"));
             EditorGUI.BeginDisabledGroup(UseMaterialPropertyAsDefault.boolValue);
             EditorGUILayout.PropertyField(DefaultParameters);
             EditorGUI.EndDisabledGroup();
 
+            EditorGUILayout.Separator();
+
             if (EditorGUI.EndChangeCheck())
             {
                 serializedObject.ApplyModifiedProperties();
+            }
+
+            if (_debugFoldoutOpen = EditorGUILayout.Foldout(_debugFoldoutOpen, Label("Debug")))
+            {
+                var generator = target as LightControllerGenerator;
+                var avatar = generator?.GetComponentInParent<VRCAvatarDescriptor>();
+                EditorGUI.BeginDisabledGroup(generator == null || avatar == null);
+                if (GUILayout.Button("Generate Manually"))
+                {
+                    Generator.Generate(avatar.gameObject, generator);
+                    AssetDatabase.SaveAssets();
+                    generator.enabled = false;
+                }
+                EditorGUI.EndDisabledGroup();
             }
         }
 

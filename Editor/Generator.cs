@@ -2,6 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Reflection.Emit;
 using UnityEditor.Animations;
 using UnityEngine;
 using VRC.SDK3.Avatars.ScriptableObjects;
@@ -15,8 +18,90 @@ namespace gomoru.su.LightController
 
         private const string GroupName_Backlight = "Backlight";
 
+        private static ParameterControl CreateControl<T>(string name, Expression<Func<LilToonParameters, T>> func)
+        {
+            var targetField = (func.Body as MemberExpression).Member as FieldInfo;
+            Action<(string, LightControllerGenerator, LilToonParameters, List<ParameterControl.Parameter>)> setParam;
+            {
+                var tupleType = typeof((string, LightControllerGenerator, LilToonParameters, List<ParameterControl.Parameter>));
+                var method = new DynamicMethod("", null, new Type[] { tupleType });
+
+                var il = method.GetILGenerator();
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldfld, tupleType.GetField("Item4"));
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldfld, tupleType.GetField("Item1"));
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldfld, tupleType.GetField("Item3"));
+                il.Emit(OpCodes.Ldfld, targetField);
+                il.Emit(OpCodes.Ldc_I4_0);
+                il.Emit(OpCodes.Call, typeof(Generator).GetMethod("AddParameter", BindingFlags.Static | BindingFlags.NonPublic).MakeGenericMethod(targetField.FieldType));
+                il.Emit(OpCodes.Pop);
+
+                il.Emit(OpCodes.Ret);
+
+                setParam = method.CreateDelegate(typeof(Action<(string, LightControllerGenerator, LilToonParameters, List<ParameterControl.Parameter>)>)) as Action<(string, LightControllerGenerator, LilToonParameters, List<ParameterControl.Parameter>)>;
+            }
+
+            Action<(string Path, Type Type, AnimationClip Default, AnimationClip Control, Material Material, LightControllerGenerator Generator, LilToonParameters Parameters)> setCurve;
+            {
+                var tupleType = typeof((string, Type, AnimationClip, AnimationClip, Material, LightControllerGenerator, LilToonParameters));
+                var method = new DynamicMethod("", null, new Type[] { tupleType });
+
+                var il = method.GetILGenerator();
+                for(int i = 0; i < 2; i++)
+                {
+                    // 対象のAnimationClipを取り出す (Default, Control)
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldfld, tupleType.GetField(i == 0 ? "Item3" : "Item4"));
+
+                    // Pathを取り出す
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldfld, tupleType.GetField("Item1"));
+
+                    // Typeを取り出す
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldfld, tupleType.GetField("Item2"));
+
+                    // 操作対象の名前
+                    il.Emit(OpCodes.Ldstr, $"{PropertyNamePrefix}{targetField.Name}");
+
+                    // AnimationCurveを作る
+                    if (i == 0)
+                    {
+                        il.Emit(OpCodes.Ldarg_0);
+                        il.Emit(OpCodes.Ldfld, tupleType.GetField("Item7"));
+                        il.Emit(OpCodes.Ldfld, targetField);
+                        il.Emit(OpCodes.Call, typeof(AnimationUtils).GetMethod(nameof(AnimationUtils.Constant)));
+                    }
+                    else
+                    {
+                        il.Emit(OpCodes.Ldc_R4, 0.0f);
+                        il.Emit(OpCodes.Ldc_R4, 1f);
+                        il.Emit(OpCodes.Call, typeof(AnimationUtils).GetMethod(nameof(AnimationUtils.Linear)));
+                    }
+
+                    // セット
+                    il.Emit(OpCodes.Callvirt, typeof(AnimationClip).GetMethod(nameof(AnimationClip.SetCurve)));
+                }
+                il.Emit(OpCodes.Ret);
+
+                setCurve = method.CreateDelegate(typeof(Action<(string, Type, AnimationClip, AnimationClip, Material, LightControllerGenerator, LilToonParameters)>)) as Action<(string, Type, AnimationClip, AnimationClip, Material, LightControllerGenerator, LilToonParameters)>;
+            }
+
+            return new ParameterControl()
+            {
+                Name = name,
+                Parameters = setParam,
+                SetAnimationCurves = setCurve,
+                CreateMenu = args => args.Controls.CreateRadialPuppet(args.Name),
+            };
+        }
+
         private static readonly ParameterControl[] Controls = new ParameterControl[]
         {
+            CreateControl("Min", param => param.LightMinLimit),
+            /*
             new ParameterControl()
             {
                 Name = "Min",
@@ -28,6 +113,7 @@ namespace gomoru.su.LightController
                 },
                 CreateMenu = args => args.Controls.CreateRadialPuppet(args.Name),
             },
+            */
             new ParameterControl()
             {
                 Name = "Max",
@@ -217,7 +303,6 @@ namespace gomoru.su.LightController
 
             foreach(var parameter in parameters)
             {
-                Debug.Log(parameter.Name);
                 fx.AddParameter(parameter.ToControllerParameter());
             }
 

@@ -8,14 +8,20 @@ namespace gomoru.su.LightController
     [Serializable]
     public sealed class LilToonParameters
     {
+        public const string GroupName_Lighting = "Lighting";
+        public const string GroupName_Backlight = "Backlight";
+
         [Header("Lighting")]
         [SerializeField, Range(0f, 1f)]
+        [Name(MenuName = "Min")]
         public float LightMinLimit = 0.05f;
 
         [SerializeField, Range(0f, 10f)]
+        [Name(MenuName = "Max")]
         public float LightMaxLimit = 1f;
 
         [SerializeField, Range(0f, 1f)]
+        [Name(MenuName = "Monochrome")]
         public float MonochromeLighting = 0f;
 
         [SerializeField, Range(0f, 1f)]
@@ -27,35 +33,44 @@ namespace gomoru.su.LightController
         [SerializeField, Range(0f, 1f)]
         public float VertexLightStrength = 0f;
 
-        [SerializeField]
-        [Header("Backlight")]
+        [SerializeField, Header("Backlight")]
+        [Group(GroupName_Backlight), Toggle, Name(MenuName = "Enable")]
         public bool UseBacklight = false;
 
         [SerializeField]
+        [Group(GroupName_Backlight), Name(MenuName = "Strength")]
         public Color BacklightColor = new Color(0.85f, 0.8f, 0.7f, 1.0f);
 
         [SerializeField, Range(0f, 1f)]
+        [Group(GroupName_Backlight)]
         public float BacklightMainStrength = 0;
 
         [SerializeField]
+        [Group(GroupName_Backlight), Toggle]
         public bool BacklightReceiveShadow = true;
 
         [SerializeField]
+        [Group(GroupName_Backlight), Toggle]
         public bool BacklightBackfaceMask = true;
 
         [SerializeField, Range(0f, 1f)]
+        [Group(GroupName_Backlight)]
         public float BacklightNormalStrength = 1;
 
         [SerializeField, Range(0f, 1f)]
+        [Group(GroupName_Backlight)]
         public float BacklightBorder = 0.35f;
 
         [SerializeField, Range(0f, 1f)]
+        [Group(GroupName_Backlight)]
         public float BacklightBlur = 0.05f;
 
         [SerializeField, Range(0f, 20f)]
+        [Group(GroupName_Backlight)]
         public float BacklightDirectivity = 5;
 
         [SerializeField, Range(0f, 1f)]
+        [Group(GroupName_Backlight)]
         public float BacklightViewStrength = 1;
 
 

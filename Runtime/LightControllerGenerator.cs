@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using VRC.SDKBase;
 
 namespace gomoru.su.LightController
@@ -14,6 +15,11 @@ namespace gomoru.su.LightController
         public bool SaveParameters = true;
 
         [SerializeField]
+        [ConditionParameter(LilToonParameters.GroupName_Lighting)]
+        public bool AddLightingControl = true;
+
+        [SerializeField]
+        [ConditionParameter(LilToonParameters.GroupName_Backlight)]
         public bool AddBacklightControl = false;
 
         [SerializeField]

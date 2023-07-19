@@ -18,6 +18,7 @@ namespace gomoru.su.LightController
 
         private static readonly ParameterControl[] Controls = new ParameterControl[]
         {
+            CreateControl(param => param.UseLighting, setCurves: args => {}),
             CreateControl(param => param.LightMinLimit),
             CreateControl(param => param.LightMaxLimit,
                 args => args.List.AddParameter(args.Name, (1 + args.Parameters.LightMaxLimit) / args.Generator.LightMaxLimitMax),
@@ -83,8 +84,7 @@ namespace gomoru.su.LightController
                 .Where(x => x.Material != null);
 
             List<ParameterControl.Parameter> parameters = new List<ParameterControl.Parameter>();
-            parameters.AddParameter("Enabled", false);
-
+            
             var controls = Controls.Where(x => x.Condition(generator)).ToArray();
 
             foreach (var control in controls)
@@ -111,8 +111,6 @@ namespace gomoru.su.LightController
                 }
             }
 
-            fx.AddParameter("Enabled", AnimatorControllerParameterType.Bool);
-
             foreach (var control in controls)
             {
                 var layer = new AnimatorControllerLayer()
@@ -129,8 +127,8 @@ namespace gomoru.su.LightController
                 state.timeParameter = control.Name;
                 state.timeParameterActive = true;
 
-                idle.AddTransition(state, new AnimatorCondition() { mode = AnimatorConditionMode.If, parameter = "Enabled" });
-                state.AddTransition(idle, new AnimatorCondition() { mode = AnimatorConditionMode.IfNot, parameter = "Enabled" });
+                idle.AddTransition(state, new AnimatorCondition() { mode = AnimatorConditionMode.If, parameter = control.Group });
+                state.AddTransition(idle, new AnimatorCondition() { mode = AnimatorConditionMode.IfNot, parameter = control.Group });
 
                 stateMachine.AddState(idle, stateMachine.entryPosition + new Vector3(150, 0));
                 stateMachine.AddState(state, stateMachine.entryPosition + new Vector3(150, 50));
@@ -155,15 +153,8 @@ namespace gomoru.su.LightController
 
             go.GetOrAddComponent<ModularAvatarMenuInstaller>(x =>
             {
-             
                 var mainMenu = CreateExpressionMenu("Main Menu").AddTo(fx);
-                mainMenu.controls.Add(new VRCExpressionsMenu.Control()
-                {
-                    name = "Enable",
-                    type = VRCExpressionsMenu.Control.ControlType.Toggle,
-                    parameter = new VRCExpressionsMenu.Control.Parameter() { name = "Enabled" },
-                });
-
+             
                 Dictionary<string, VRCExpressionsMenu> category = new Dictionary<string, VRCExpressionsMenu>();
 
                 int groupCount = controls.Select(y => y.Group).Where(y => y != null).Distinct().Count();
@@ -290,14 +281,16 @@ namespace gomoru.su.LightController
             var targetField = (parameter.Body as MemberExpression).Member as FieldInfo;
             var nameAttr = targetField.GetCustomAttribute<NameAttribute>();
             var group = targetField.GetCustomAttribute<GroupAttribute>()?.Group;
-            var name = nameAttr?.Name ?? targetField.Name;
+            var isMaster = targetField.GetCustomAttribute<GroupMasterAttribute>() != null;
+            var name = isMaster ? group : nameAttr?.Name ?? targetField.Name;
             var menuName = nameAttr?.MenuName ?? (group != null && name.StartsWith(group) ? name.Substring(group.Length) : name);
             var isToggle = targetField.GetCustomAttribute<ToggleAttribute>() != null;
 
+            bool boolAsFloat = !isMaster && isToggle;
 
             if (setParam == null)
             {
-                setParam = args => args.List.AddParameter(args.Name, targetField.GetValue(args.Parameters), targetField.FieldType, isToggle);
+                setParam = args => args.List.AddParameter(args.Name, targetField.GetValue(args.Parameters), targetField.FieldType, !isMaster && isToggle);
             }
 
             if (setCurves == null)
@@ -314,8 +307,16 @@ namespace gomoru.su.LightController
                     else
                         fValue = (float)value;
 
-                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{targetField.Name}", AnimationUtils.Constant(fValue));
-                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{targetField.Name}", AnimationUtils.Linear(min, max));
+                    if (isMaster)
+                    {
+                        args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{targetField.Name}", AnimationUtils.Constant(min));
+                        args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{targetField.Name}", AnimationUtils.Constant(max));
+                    }
+                    else
+                    {
+                        args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{targetField.Name}", AnimationUtils.Constant(fValue));
+                        args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{targetField.Name}", AnimationUtils.Linear(min, max));
+                    }
                 };
             }
 
@@ -368,7 +369,6 @@ namespace gomoru.su.LightController
             public Action<(LilToonParameters Parameters, Material Material)> GetValueFromMaterial;
             public AnimationClip Control;
             public AnimationClip Default;
-
 
             public struct Parameter
             {

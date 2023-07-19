@@ -11,30 +11,42 @@ namespace gomoru.su.LightController
         public const string GroupName_Lighting = "Lighting";
         public const string GroupName_Backlight = "Backlight";
 
+        [HideInInspector, SerializeField]
+        [Toggle, Name(MenuName = "Enable")]
+        [GroupMaster, Group(GroupName_Lighting)]
+        public bool UseLighting = false;
+
         [Header("Lighting")]
         [SerializeField, Range(0f, 1f)]
         [Name(MenuName = "Min")]
+        [Group(GroupName_Lighting)]
         public float LightMinLimit = 0.05f;
 
         [SerializeField, Range(0f, 10f)]
         [Name(MenuName = "Max")]
+        [Group(GroupName_Lighting)]
         public float LightMaxLimit = 1f;
 
         [SerializeField, Range(0f, 1f)]
         [Name(MenuName = "Monochrome")]
+        [Group(GroupName_Lighting)]
         public float MonochromeLighting = 0f;
 
         [SerializeField, Range(0f, 1f)]
+        [Group(GroupName_Lighting)]
         public float ShadowEnvStrength = 0f;
 
         [SerializeField, Range(0f, 1f)]
+        [Group(GroupName_Lighting)]
         public float AsUnlit = 0f;
 
         [SerializeField, Range(0f, 1f)]
+        [Group(GroupName_Lighting)]
         public float VertexLightStrength = 0f;
 
         [SerializeField, Header("Backlight")]
-        [Group(GroupName_Backlight), Toggle, Name(MenuName = "Enable")]
+        [Toggle, Name(MenuName = "Enable")]
+        [GroupMaster, Group(GroupName_Backlight)]
         public bool UseBacklight = false;
 
         [SerializeField]

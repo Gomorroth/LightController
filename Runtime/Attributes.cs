@@ -3,6 +3,9 @@
 namespace gomoru.su.LightController
 {
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
+    public sealed class GroupMasterAttribute : Attribute { }
+
+    [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
     public sealed class ConditionParameterAttribute : Attribute
     {
         public string Name { get; }

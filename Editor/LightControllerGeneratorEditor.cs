@@ -9,7 +9,7 @@ namespace gomoru.su.LightController
     {
         private SerializedProperty LightMaxLimitMax;
         private SerializedProperty SaveParameters;
-        //private SerializedProperty AddLightingControl;
+        private SerializedProperty AddLightingControl;
         private SerializedProperty AddBacklightControl;
         private SerializedProperty UseMaterialPropertyAsDefault;
         private SerializedProperty DefaultParameters;
@@ -20,7 +20,7 @@ namespace gomoru.su.LightController
         {
             LightMaxLimitMax = serializedObject.FindProperty(nameof(LightControllerGenerator.LightMaxLimitMax));
             SaveParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.SaveParameters));
-            //AddLightingControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddLightingControl));
+            AddLightingControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddLightingControl));
             AddBacklightControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddBacklightControl));
             UseMaterialPropertyAsDefault = serializedObject.FindProperty(nameof(LightControllerGenerator.UseMaterialPropertyAsDefault));
             DefaultParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.DefaultParameters));
@@ -33,7 +33,7 @@ namespace gomoru.su.LightController
 
             EditorGUILayout.PropertyField(LightMaxLimitMax, Label("Maximum value of Light Max Limit"));
             EditorGUILayout.PropertyField(SaveParameters);
-            //EditorGUILayout.PropertyField(AddLightingControl);
+            EditorGUILayout.PropertyField(AddLightingControl);
             EditorGUILayout.PropertyField(AddBacklightControl);
             EditorGUILayout.PropertyField(UseMaterialPropertyAsDefault, Label("Use material proeperty value as Default value"));
             EditorGUI.BeginDisabledGroup(UseMaterialPropertyAsDefault.boolValue);

@@ -1,5 +1,4 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using VRC.SDKBase;
 
 namespace gomoru.su.LightController
@@ -9,6 +8,7 @@ namespace gomoru.su.LightController
     public sealed class LightControllerGenerator : MonoBehaviour, IEditorOnly
     {
         [SerializeField, Range(1f, 10f)]
+        [LimitParameter(nameof(LilToonParameters.LightMaxLimit))]
         public float LightMaxLimitMax = 1;
 
         [SerializeField]
@@ -24,6 +24,14 @@ namespace gomoru.su.LightController
         [SerializeField]
         [ConditionParameter(LilToonParameters.GroupName_Backlight)]
         public bool AddBacklightControl = false;
+
+        [SerializeField]
+        [ConditionParameter(LilToonParameters.GroupName_DistanceFade)]
+        public bool AddDistanceFadeControl = false;
+
+        [SerializeField, Range(0, 1)]
+        [LimitParameter(nameof(LilToonParameters.DistanceFadeEnd))]
+        public float DistanceFadeEndMax = 1f;
 
         [SerializeField]
         public bool UseMaterialPropertyAsDefault = false;
@@ -47,17 +55,5 @@ namespace gomoru.su.LightController
             else
                 Destroy(this);
         }
-    }
-
-    [Serializable]
-    public struct ParameterSyncSettings
-    {
-        [SerializeField]
-        public bool Lighting;
-
-        [SerializeField]
-        public bool Backlight;
-
-        public static ParameterSyncSettings Default => new ParameterSyncSettings() { Lighting = true, Backlight = true };
     }
 }

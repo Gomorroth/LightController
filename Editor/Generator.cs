@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using UnityEditor.Animations;
 using UnityEngine;
+using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace gomoru.su.LightController
@@ -151,14 +152,72 @@ namespace gomoru.su.LightController
                 control.Parameters((control.Name, generator, @params, parameters));
             }
 
-            foreach(var parameter in parameters)
+            var groups = controls.Select(y => y.Group).Where(y => y != null).Distinct();
+            int groupCount = groups.Count();
+
+            if (generator.AddResetButton)
+            {
+                var layer = new AnimatorControllerLayer()
+                {
+                    name = "Reset",
+                    defaultWeight = 1,
+                    stateMachine = new AnimatorStateMachine() { name = "Reset" }.HideInHierarchy().AddTo(fx),
+                };
+                var stateMachine = layer.stateMachine;
+
+                var blank = new AnimationClip() { name = "Blank" }.HideInHierarchy().AddTo(fx);
+
+                var idle = stateMachine.CreateState("Idle", blank);
+                var states = new AnimatorState[groupCount];
+
+                foreach(var (group, i) in groups.Select((x, i) => (x, i)))
+                {
+                    var state = stateMachine.CreateState(group, blank);
+                    states[i] = state;
+                    stateMachine.AddState(state, stateMachine.entryPosition + new Vector3(300, i * 150 + 200));
+
+                    var dr = state.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
+                    dr.localOnly = true;
+                    foreach(var x in parameters.Where(x => x.Group == group))
+                    {
+                        dr.parameters.Add(new VRC.SDKBase.VRC_AvatarParameterDriver.Parameter()
+                        {
+                            name = x.Name,
+                            type = VRC.SDKBase.VRC_AvatarParameterDriver.ChangeType.Set,
+                            value = x.Value,
+                        });
+                    }
+                }
+
+                stateMachine.AddState(idle, stateMachine.entryPosition + new Vector3(0, 200));
+
+                for (int i = 0; i < states.Length; i++)
+                {
+                    var state = states[i];
+                    for (int i2 = i + 1; i2 < states.Length; i2++)
+                    {
+                        var state2 = states[i2];
+
+                        state.AddTransition(state2, new AnimatorCondition() { mode = AnimatorConditionMode.Equals, parameter = "Reset", threshold = i2 + 1 });
+                        state2.AddTransition(state, new AnimatorCondition() { mode = AnimatorConditionMode.Equals, parameter = "Reset", threshold = i + 1 });
+                    }
+
+                    idle.AddTransition(state, new AnimatorCondition() { mode = AnimatorConditionMode.Equals, parameter = "Reset", threshold = i + 1 });
+                    state.AddTransition(idle, new AnimatorCondition() { mode = AnimatorConditionMode.Equals, parameter = "Reset", threshold = 0 });
+                }
+
+                fx.AddLayer(layer);
+                parameters.AddParameter("Reset", 0, null);
+            }
+
+            foreach (var parameter in parameters)
             {
                 fx.AddParameter(parameter.ToControllerParameter());
             }
 
             go.GetOrAddComponent<ModularAvatarMergeAnimator>(x =>
             {
-                x.layerType = VRC.SDK3.Avatars.Components.VRCAvatarDescriptor.AnimLayerType.FX;
+                x.layerType = VRCAvatarDescriptor.AnimLayerType.FX;
                 x.animator = fx;
                 x.matchAvatarWriteDefaults = true;
                 x.pathMode = MergeAnimatorPathMode.Absolute;
@@ -168,20 +227,18 @@ namespace gomoru.su.LightController
             {
                 var mainMenu = CreateExpressionMenu("Main Menu").AddTo(fx);
              
-                Dictionary<string, VRCExpressionsMenu> category = new Dictionary<string, VRCExpressionsMenu>();
-
-                int groupCount = controls.Select(y => y.Group).Where(y => y != null).Distinct().Count();
+                Dictionary<string, VRCExpressionsMenu> categories = new Dictionary<string, VRCExpressionsMenu>();
 
                 foreach (var control in controls)
                 {
                     var menu = mainMenu;
                     if (groupCount >= 2 && !string.IsNullOrEmpty(control.Group))
                     {
-                        if (!category.TryGetValue(control.Group, out menu))
+                        if (!categories.TryGetValue(control.Group, out menu))
                         {
                             menu = CreateExpressionMenu($"{control.Group} Menu").AddTo(fx);
                             mainMenu.controls.Add(new VRCExpressionsMenu.Control() { name = control.Group, type = VRCExpressionsMenu.Control.ControlType.SubMenu, subMenu = menu });
-                            category.Add(control.Group, menu);
+                            categories.Add(control.Group, menu);
                         }
                     }
 
@@ -194,6 +251,22 @@ namespace gomoru.su.LightController
                     type = VRCExpressionsMenu.Control.ControlType.SubMenu,
                     subMenu = mainMenu,
                 }).AddTo(fx);
+
+                if (generator.AddResetButton)
+                {
+                    foreach(var (category, i) in categories.Select((a, i) => (a, i)))
+                    {
+                        var menu = category.Value;
+                        Debug.Log($"{category} {i}");
+                        menu.controls.Insert(1, new VRCExpressionsMenu.Control()
+                        {
+                            name = "Reset",
+                            type = VRCExpressionsMenu.Control.ControlType.Button,
+                            parameter = new VRCExpressionsMenu.Control.Parameter() { name = $"Reset" },
+                            value = i + 1
+                        });
+                    }
+                }
             });
 
             go.GetOrAddComponent<ModularAvatarParameters>(component =>
@@ -204,7 +277,7 @@ namespace gomoru.su.LightController
                     var p = x.ToParameterConfig();
                     p.saved = generator.SaveParameters;
                     p.remapTo = $"{ParameterNamePrefix}{p.nameOrPrefix}";
-                    if (syncSettings.TryGetValue(x.Group, out var flag) && !flag)
+                    if (x.Group == null || (syncSettings.TryGetValue(x.Group, out var flag) && !flag))
                     {
                         p.syncType = ParameterSyncType.NotSynced;
                     }

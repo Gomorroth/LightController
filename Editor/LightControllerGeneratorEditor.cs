@@ -16,6 +16,7 @@ namespace gomoru.su.LightController
         private SerializedProperty DistanceFadeEndMax;
         private SerializedProperty UseMaterialPropertyAsDefault;
         private SerializedProperty DefaultParameters;
+        private SerializedProperty AddResetButton;
 
         private bool _debugFoldoutOpen;
 
@@ -26,8 +27,9 @@ namespace gomoru.su.LightController
             AddLightingControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddLightingControl));
             LightMaxLimitMax = serializedObject.FindProperty(nameof(LightControllerGenerator.LightMaxLimitMax));
             AddBacklightControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddBacklightControl));
-            AddDistanceFadeControl = serializedObject.FindProperty(nameof(AddDistanceFadeControl));
-            DistanceFadeEndMax = serializedObject.FindProperty(nameof(DistanceFadeEndMax));
+            AddDistanceFadeControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddDistanceFadeControl));
+            DistanceFadeEndMax = serializedObject.FindProperty(nameof(LightControllerGenerator.DistanceFadeEndMax));
+            AddResetButton = serializedObject.FindProperty(nameof(LightControllerGenerator.AddResetButton));
             UseMaterialPropertyAsDefault = serializedObject.FindProperty(nameof(LightControllerGenerator.UseMaterialPropertyAsDefault));
             DefaultParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.DefaultParameters));
         }
@@ -54,6 +56,7 @@ namespace gomoru.su.LightController
             EditorGUI.indentLevel--;
             EditorGUI.EndDisabledGroup();
             EditorGUILayout.PropertyField(UseMaterialPropertyAsDefault);
+            EditorGUILayout.PropertyField(AddResetButton);
 
             EditorGUILayout.Separator();
             EditorGUI.BeginDisabledGroup(UseMaterialPropertyAsDefault.boolValue);

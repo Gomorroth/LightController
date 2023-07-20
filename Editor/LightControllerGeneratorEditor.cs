@@ -7,10 +7,10 @@ namespace gomoru.su.LightController
     [CustomEditor(typeof(LightControllerGenerator))]
     public sealed class LightControllerGeneratorEditor : Editor
     {
-        private SerializedProperty LightMaxLimitMax;
         private SerializedProperty SaveParameters;
         private SerializedProperty SyncSettings;
         private SerializedProperty AddLightingControl;
+        private SerializedProperty LightMaxLimitMax;
         private SerializedProperty AddBacklightControl;
         private SerializedProperty AddDistanceFadeControl;
         private SerializedProperty DistanceFadeEndMax;
@@ -21,10 +21,10 @@ namespace gomoru.su.LightController
 
         private void OnEnable()
         {
-            LightMaxLimitMax = serializedObject.FindProperty(nameof(LightControllerGenerator.LightMaxLimitMax));
             SaveParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.SaveParameters));
             SyncSettings = serializedObject.FindProperty(nameof(LightControllerGenerator.SyncSettings));
             AddLightingControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddLightingControl));
+            LightMaxLimitMax = serializedObject.FindProperty(nameof(LightControllerGenerator.LightMaxLimitMax));
             AddBacklightControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddBacklightControl));
             AddDistanceFadeControl = serializedObject.FindProperty(nameof(AddDistanceFadeControl));
             DistanceFadeEndMax = serializedObject.FindProperty(nameof(DistanceFadeEndMax));
@@ -37,10 +37,15 @@ namespace gomoru.su.LightController
             serializedObject.Update();
             EditorGUI.BeginChangeCheck();
 
-            EditorGUILayout.PropertyField(LightMaxLimitMax, Label("Maximum value of Light Max Limit"));
             EditorGUILayout.PropertyField(SaveParameters);
             EditorGUILayout.PropertyField(SyncSettings);
+            EditorGUILayout.Separator();
             EditorGUILayout.PropertyField(AddLightingControl);
+            EditorGUI.BeginDisabledGroup(!AddLightingControl.boolValue);
+            EditorGUI.indentLevel++;
+            EditorGUILayout.PropertyField(LightMaxLimitMax);
+            EditorGUI.indentLevel--;
+            EditorGUI.EndDisabledGroup();
             EditorGUILayout.PropertyField(AddBacklightControl);
             EditorGUILayout.PropertyField(AddDistanceFadeControl);
             EditorGUI.BeginDisabledGroup(!AddDistanceFadeControl.boolValue);
@@ -48,7 +53,9 @@ namespace gomoru.su.LightController
             EditorGUILayout.PropertyField(DistanceFadeEndMax);
             EditorGUI.indentLevel--;
             EditorGUI.EndDisabledGroup();
-            EditorGUILayout.PropertyField(UseMaterialPropertyAsDefault, Label("Use material proeperty value as Default value"));
+            EditorGUILayout.PropertyField(UseMaterialPropertyAsDefault);
+
+            EditorGUILayout.Separator();
             EditorGUI.BeginDisabledGroup(UseMaterialPropertyAsDefault.boolValue);
             EditorGUILayout.PropertyField(DefaultParameters);
             EditorGUI.EndDisabledGroup();

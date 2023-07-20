@@ -16,59 +16,64 @@ namespace gomoru.su.LightController
         private const string PropertyNamePrefix = "material._";
         private const string ParameterNamePrefix = "LightController";
 
-        private static readonly ParameterControl[] Controls = new ParameterControl[]
+        static Generator()
         {
-            CreateControl(param => param.UseLighting, setCurves: _ => {}),
-            CreateControl(param => param.LightMinLimit),
-            CreateControl(param => param.LightMaxLimit,
-                args => args.List.AddParameter(args.Name, (1 + args.Parameters.LightMaxLimit) / args.Generator.LightMaxLimitMax, LilToonParameters.GroupName_Lighting),
-                args =>
-                {
-                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.LightMaxLimit)}", AnimationUtils.Constant(args.Parameters.LightMaxLimit));
-                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.LightMaxLimit)}", AnimationUtils.Linear(0, args.Generator.LightMaxLimitMax));
-                }),
-            CreateControl(param => param.MonochromeLighting),
-            CreateControl(param => param.ShadowEnvStrength),
-            CreateControl(param => param.AsUnlit),
-            CreateControl(param => param.VertexLightStrength),
+             _limitters = typeof(LightControllerGenerator).GetFields().Where(x => x.GetCustomAttribute<LimitParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<LimitParameterAttribute>().Name);
+             _conditions = typeof(LightControllerGenerator).GetFields().Where(x => x.GetCustomAttribute<ConditionParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<ConditionParameterAttribute>().Name);
 
-            CreateControl(param => param.UseBacklight),
-            CreateControl(param => param.BacklightColor,
-                args => args.List.AddParameter(args.Name, args.Parameters.BacklightColor.a, LilToonParameters.GroupName_Backlight), 
-                args =>
-                {
-                    var color = args.Parameters.BacklightColor;
-                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.r", AnimationUtils.Constant(color.r));
-                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.g", AnimationUtils.Constant(color.g));
-                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.b", AnimationUtils.Constant(color.b));
-                    args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.a", AnimationUtils.Constant(color.a));
+            Controls = new ParameterControl[]
+            {
+                CreateControl(param => param.UseLighting, setCurves: _ => {}),
+                CreateControl(param => param.LightMinLimit),
+                CreateControl(param => param.LightMaxLimit),
+                CreateControl(param => param.MonochromeLighting),
+                CreateControl(param => param.ShadowEnvStrength),
+                CreateControl(param => param.AsUnlit),
+                CreateControl(param => param.VertexLightStrength),
 
-                    var zero = default(Color);
-                    Color.RGBToHSV(color, out zero.r , out zero.g, out zero.b);
-                    zero.b = 0;
-                    zero = Color.HSVToRGB(zero.r, zero.g, zero.b);
+                CreateControl(param => param.UseBacklight),
+                CreateControl(param => param.BacklightColor,
+                    args => args.List.AddParameter(args.Name, args.Parameters.BacklightColor.a, LilToonParameters.GroupName_Backlight),
+                    args =>
+                    {
+                        var color = args.Parameters.BacklightColor;
+                        args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.r", AnimationUtils.Constant(color.r));
+                        args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.g", AnimationUtils.Constant(color.g));
+                        args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.b", AnimationUtils.Constant(color.b));
+                        args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.a", AnimationUtils.Constant(color.a));
 
-                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.r", AnimationUtils.Linear(zero.r, color.r));
-                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.g", AnimationUtils.Linear(zero.g, color.g));
-                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.b", AnimationUtils.Linear(zero.b, color.b));
-                    args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.a", AnimationUtils.Linear(zero.a, color.a));
-                }),
+                        var zero = default(Color);
+                        Color.RGBToHSV(color, out zero.r , out zero.g, out zero.b);
+                        zero.b = 0;
+                        zero = Color.HSVToRGB(zero.r, zero.g, zero.b);
 
-            CreateControl(param => param.BacklightMainStrength),
-            CreateControl(param => param.BacklightReceiveShadow),
-            CreateControl(param => param.BacklightBackfaceMask),
-            CreateControl(param => param.BacklightNormalStrength),
-            CreateControl(param => param.BacklightBorder),
-            CreateControl(param => param.BacklightBlur),
-            CreateControl(param => param.BacklightDirectivity),
-            CreateControl(param => param.BacklightViewStrength),
+                        args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.r", AnimationUtils.Linear(zero.r, color.r));
+                        args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.g", AnimationUtils.Linear(zero.g, color.g));
+                        args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.b", AnimationUtils.Linear(zero.b, color.b));
+                        args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.a", AnimationUtils.Linear(zero.a, color.a));
+                    }),
 
-            CreateControl(param => param.UseDistanceFade, setCurves: _ => { }),
-            CreateControl(param => param.DistanceFadeStart),
-            CreateControl(param => param.DistanceFadeEnd),
-            CreateControl(param => param.DistanceFadeStrength),
-            CreateControl(param => param.DistanceFadeBackfaceForceShadow),
-        };
+                CreateControl(param => param.BacklightMainStrength),
+                CreateControl(param => param.BacklightReceiveShadow),
+                CreateControl(param => param.BacklightBackfaceMask),
+                CreateControl(param => param.BacklightNormalStrength),
+                CreateControl(param => param.BacklightBorder),
+                CreateControl(param => param.BacklightBlur),
+                CreateControl(param => param.BacklightDirectivity),
+                CreateControl(param => param.BacklightViewStrength),
+
+                CreateControl(param => param.UseDistanceFade, setCurves: _ => { }),
+                CreateControl(param => param.DistanceFadeStart),
+                CreateControl(param => param.DistanceFadeEnd),
+                CreateControl(param => param.DistanceFadeStrength),
+                CreateControl(param => param.DistanceFadeBackfaceForceShadow),
+            };
+        }
+
+        private static readonly ParameterControl[] Controls;
+        private static Dictionary<string, FieldInfo> _limitters;
+        private static Dictionary<string, FieldInfo> _conditions;
+
 
         public static void Generate(GameObject avatarObject, LightControllerGenerator generator)
         {
@@ -129,8 +134,11 @@ namespace gomoru.su.LightController
 
                 var idle = stateMachine.CreateState("Idle", control.Default);
                 var state = stateMachine.CreateState(control.Name, control.Control);
-                state.timeParameter = control.Name;
-                state.timeParameterActive = true;
+                if (!control.IsMaster)
+                {
+                    state.timeParameter = control.Name;
+                    state.timeParameterActive = true;
+                }
 
                 idle.AddTransition(state, new AnimatorCondition() { mode = AnimatorConditionMode.If, parameter = control.Group });
                 state.AddTransition(idle, new AnimatorCondition() { mode = AnimatorConditionMode.IfNot, parameter = control.Group });
@@ -240,7 +248,7 @@ namespace gomoru.su.LightController
             return result;
         }
 
-        private static List<ParameterControl.Parameter> AddParameter<T>(this List<ParameterControl.Parameter> list, string name, T value, string group, bool boolAsFloat = false) => AddParameter(list, name, (object)value, typeof(T), group, boolAsFloat);
+        private static List<ParameterControl.Parameter> AddParameter<T>(this List<ParameterControl.Parameter> list, string name, T value, string group, bool boolAsFloat = false) => AddParameter(list, name, value, typeof(T), group, boolAsFloat);
 
         private static List<ParameterControl.Parameter> AddParameter(this List<ParameterControl.Parameter> list, string name, object value, Type type, string group, bool boolAsFloat = false)
         {
@@ -263,9 +271,6 @@ namespace gomoru.su.LightController
             return list;
         }
 
-        private static Dictionary<string, FieldInfo> _limitters = typeof(LightControllerGenerator).GetFields().Where(x => x.GetCustomAttribute<LimitParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<LimitParameterAttribute>().Name);
-        private static Dictionary<string, FieldInfo> _conditions;
-
         private static ParameterControl CreateControl<T>(
             Expression<Func<LilToonParameters, T>> parameter,
             Action<(string Name, LightControllerGenerator Generator, LilToonParameters Parameters, List<ParameterControl.Parameter> List)> setParam = null,
@@ -275,7 +280,7 @@ namespace gomoru.su.LightController
             var targetField = (parameter.Body as MemberExpression).Member as FieldInfo;
             var attributes = targetField.GetCustomAttributes();
 
-            var nameAttr = attributes.GetAttribute<NameAttribute>();
+            var nameAttr = attributes.GetAttribute<NameAttribute>(); 
             var group = attributes.GetAttribute<GroupAttribute>()?.Group;
             var isMaster = attributes.GetAttribute<GroupMasterAttribute>() != null;
             var isToggle = attributes.GetAttribute<ToggleAttribute>() != null;
@@ -288,9 +293,21 @@ namespace gomoru.su.LightController
 
             if (setParam == null)
             {
-                setParam = args => args.List.AddParameter(args.Name, targetField.GetValue(args.Parameters), targetField.FieldType, group, !isMaster && isToggle);
+                setParam = args =>
+                {
+                    if (_limitters.TryGetValue(targetField.Name, out var limitField))
+                    {
+                        var limit = (float)limitField.GetValue(args.Generator);
+                        var value = (float)targetField.GetValue(args.Parameters);
+                        value /= limit;
+                        args.List.AddParameter(args.Name, value, group, !isMaster && isToggle);
+                    }
+                    else
+                    {
+                        args.List.AddParameter(args.Name, targetField.GetValue(args.Parameters), targetField.FieldType, group, !isMaster && isToggle);
+                    }
+                };
             }
-
             if (setCurves == null)
             {
                 var range = targetField.GetCustomAttribute<RangeAttribute>();
@@ -310,7 +327,6 @@ namespace gomoru.su.LightController
                     {
                         var limit = (float)limitField.GetValue(args.Generator);
                         max = limit;
-                        fValue = (1 + fValue) / limit;
                     }
 
 
@@ -342,10 +358,6 @@ namespace gomoru.su.LightController
             {
                 if (group != null)
                 {
-                    if (_conditions == null)
-                    {
-                        _conditions = typeof(LightControllerGenerator).GetFields().Select(x => (Field: x, Attr: x.GetCustomAttribute<ConditionParameterAttribute>())).Where(x => x.Attr != null).ToDictionary(x => x.Attr.Name, x => x.Field);
-                    }
                     if (_conditions.TryGetValue(group, out var cond))
                     {
                         condition = generator =>
@@ -363,6 +375,7 @@ namespace gomoru.su.LightController
             {
                 Name = name,
                 Group = group,
+                IsMaster = isMaster,
                 Condition = condition,
                 Parameters = setParam,
                 SetAnimationCurves = setCurves,
@@ -382,6 +395,7 @@ namespace gomoru.su.LightController
         {
             public string Name;
             public string Group = null;
+            public bool IsMaster = false;
             public Func<LightControllerGenerator, bool> Condition = _ => true;
             public Action<(string Name, LightControllerGenerator Generator, LilToonParameters Parameters, List<Parameter> List)> Parameters;
             public Action<(string Path, Type Type, AnimationClip Default, AnimationClip Control, Material Material, LightControllerGenerator Generator, LilToonParameters Parameters)> SetAnimationCurves;

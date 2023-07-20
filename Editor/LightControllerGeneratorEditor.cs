@@ -1,4 +1,6 @@
-﻿using UnityEditor;
+﻿using System;
+using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 
@@ -7,21 +9,29 @@ namespace gomoru.su.LightController
     [CustomEditor(typeof(LightControllerGenerator))]
     public sealed class LightControllerGeneratorEditor : Editor
     {
-        private SerializedProperty LightMaxLimitMax;
         private SerializedProperty SaveParameters;
-        //private SerializedProperty AddLightingControl;
+        private SerializedProperty SyncSettings;
+        private SerializedProperty AddLightingControl;
+        private SerializedProperty LightMaxLimitMax;
         private SerializedProperty AddBacklightControl;
+        private SerializedProperty AddDistanceFadeControl;
+        private SerializedProperty DistanceFadeEndMax;
         private SerializedProperty UseMaterialPropertyAsDefault;
         private SerializedProperty DefaultParameters;
+        private SerializedProperty AddResetButton;
 
         private bool _debugFoldoutOpen;
 
         private void OnEnable()
         {
-            LightMaxLimitMax = serializedObject.FindProperty(nameof(LightControllerGenerator.LightMaxLimitMax));
             SaveParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.SaveParameters));
-            //AddLightingControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddLightingControl));
+            SyncSettings = serializedObject.FindProperty(nameof(LightControllerGenerator.SyncSettings));
+            AddLightingControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddLightingControl));
+            LightMaxLimitMax = serializedObject.FindProperty(nameof(LightControllerGenerator.LightMaxLimitMax));
             AddBacklightControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddBacklightControl));
+            AddDistanceFadeControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddDistanceFadeControl));
+            DistanceFadeEndMax = serializedObject.FindProperty(nameof(LightControllerGenerator.DistanceFadeEndMax));
+            AddResetButton = serializedObject.FindProperty(nameof(LightControllerGenerator.AddResetButton));
             UseMaterialPropertyAsDefault = serializedObject.FindProperty(nameof(LightControllerGenerator.UseMaterialPropertyAsDefault));
             DefaultParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.DefaultParameters));
         }
@@ -31,11 +41,26 @@ namespace gomoru.su.LightController
             serializedObject.Update();
             EditorGUI.BeginChangeCheck();
 
-            EditorGUILayout.PropertyField(LightMaxLimitMax, Label("Maximum value of Light Max Limit"));
             EditorGUILayout.PropertyField(SaveParameters);
-            //EditorGUILayout.PropertyField(AddLightingControl);
+            EditorGUILayout.PropertyField(SyncSettings);
+            EditorGUILayout.Separator();
+            EditorGUILayout.PropertyField(AddLightingControl);
+            EditorGUI.BeginDisabledGroup(!AddLightingControl.boolValue);
+            EditorGUI.indentLevel++;
+            EditorGUILayout.PropertyField(LightMaxLimitMax);
+            EditorGUI.indentLevel--;
+            EditorGUI.EndDisabledGroup();
             EditorGUILayout.PropertyField(AddBacklightControl);
-            EditorGUILayout.PropertyField(UseMaterialPropertyAsDefault, Label("Use material proeperty value as Default value"));
+            EditorGUILayout.PropertyField(AddDistanceFadeControl);
+            EditorGUI.BeginDisabledGroup(!AddDistanceFadeControl.boolValue);
+            EditorGUI.indentLevel++;
+            EditorGUILayout.PropertyField(DistanceFadeEndMax);
+            EditorGUI.indentLevel--;
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.PropertyField(UseMaterialPropertyAsDefault);
+            EditorGUILayout.PropertyField(AddResetButton);
+
+            EditorGUILayout.Separator();
             EditorGUI.BeginDisabledGroup(UseMaterialPropertyAsDefault.boolValue);
             EditorGUILayout.PropertyField(DefaultParameters);
             EditorGUI.EndDisabledGroup();
@@ -54,9 +79,16 @@ namespace gomoru.su.LightController
                 EditorGUI.BeginDisabledGroup(generator == null || avatar == null);
                 if (GUILayout.Button("Generate Manually"))
                 {
-                    Generator.Generate(avatar.gameObject, generator);
-                    AssetDatabase.SaveAssets();
-                    generator.enabled = false;
+                    var path = EditorUtility.SaveFilePanelInProject("Save", $"LightControllerGeneratedArtifacts_{avatar.name}_{DateTime.Now:yyyyMMddHHmmss.fff}", "controller", "");
+                    if (!string.IsNullOrEmpty(path))
+                    {
+                        var fx = new AnimatorController();
+                        AssetDatabase.CreateAsset(fx, path);
+                        generator.FX = fx;
+                        Generator.Generate(avatar.gameObject, generator);
+                        AssetDatabase.SaveAssets();
+                        GameObject.DestroyImmediate(generator);
+                    }
                 }
                 EditorGUI.EndDisabledGroup();
             }

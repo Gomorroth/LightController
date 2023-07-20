@@ -1,5 +1,4 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using VRC.SDKBase;
 
 namespace gomoru.su.LightController
@@ -9,10 +8,14 @@ namespace gomoru.su.LightController
     public sealed class LightControllerGenerator : MonoBehaviour, IEditorOnly
     {
         [SerializeField, Range(1f, 10f)]
+        [LimitParameter(nameof(LilToonParameters.LightMaxLimit))]
         public float LightMaxLimitMax = 1;
 
         [SerializeField]
         public bool SaveParameters = true;
+
+        [SerializeField]
+        public ParameterSyncSettings SyncSettings = ParameterSyncSettings.Default;
 
         [SerializeField]
         [ConditionParameter(LilToonParameters.GroupName_Lighting)]
@@ -21,6 +24,17 @@ namespace gomoru.su.LightController
         [SerializeField]
         [ConditionParameter(LilToonParameters.GroupName_Backlight)]
         public bool AddBacklightControl = false;
+
+        [SerializeField]
+        [ConditionParameter(LilToonParameters.GroupName_DistanceFade)]
+        public bool AddDistanceFadeControl = false;
+
+        [SerializeField, Range(0, 1)]
+        [LimitParameter(nameof(LilToonParameters.DistanceFadeEnd))]
+        public float DistanceFadeEndMax = 1f;
+
+        [SerializeField]
+        public bool AddResetButton = false;
 
         [SerializeField]
         public bool UseMaterialPropertyAsDefault = false;

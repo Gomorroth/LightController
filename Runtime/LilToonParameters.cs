@@ -88,7 +88,7 @@ namespace gomoru.su.LightController
         public float BacklightViewStrength = 1;
 
 
-        [SerializeField, Header("DistanceFade")]
+        [HideInInspector, SerializeField]
         [Toggle, Name(MenuName = "Enable")]
         [GroupMaster, Group(GroupName_DistanceFade)]
         public bool UseDistanceFade = false;
@@ -97,6 +97,7 @@ namespace gomoru.su.LightController
         [Group(GroupName_DistanceFade)]
         public Vector4 DistanceFade = new Vector4(0.1f, 0.01f, 0, 0);
 
+        [Header("Distance Fade")]
         [SerializeField, Range(0, 1)]
         [VectorProxy(nameof(DistanceFade), 0)]
         [Group(GroupName_DistanceFade)]

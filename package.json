@@ -1,6 +1,6 @@
 {
   "name": "gomoru.su.light-controller",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "displayName": "Light Controller",
   "description": "Animation and Expression generator for lighting parameter of lilToon using Modular Avatar.",
   "url" : "https://github.com/Gomorroth/LightController",

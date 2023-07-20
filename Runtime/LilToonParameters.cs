@@ -96,7 +96,7 @@ namespace gomoru.su.LightController
             VertexLightStrength = material.GetFloat($"_{nameof(VertexLightStrength)}");
 
             UseBacklight = material.GetInt($"_{nameof(UseBacklight)}") != 0;
-            BacklightColor = material.GetColor($"_{BacklightColor}");
+            BacklightColor = material.GetColor($"_{nameof(BacklightColor)}");
             BacklightMainStrength = material.GetFloat($"_{nameof(BacklightMainStrength)}");
             BacklightReceiveShadow = material.GetInt($"_{nameof(BacklightReceiveShadow)}") != 0;
             BacklightBackfaceMask = material.GetInt($"_{nameof(BacklightBackfaceMask)}") != 0;

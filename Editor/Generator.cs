@@ -21,7 +21,7 @@ namespace gomoru.su.LightController
             CreateControl(param => param.UseLighting, setCurves: args => {}),
             CreateControl(param => param.LightMinLimit),
             CreateControl(param => param.LightMaxLimit,
-                args => args.List.AddParameter(args.Name, (1 + args.Parameters.LightMaxLimit) / args.Generator.LightMaxLimitMax),
+                args => args.List.AddParameter(args.Name, (1 + args.Parameters.LightMaxLimit) / args.Generator.LightMaxLimitMax, LilToonParameters.GroupName_Lighting),
                 args =>
                 {
                     args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.LightMaxLimit)}", AnimationUtils.Constant(args.Parameters.LightMaxLimit));
@@ -34,7 +34,7 @@ namespace gomoru.su.LightController
 
             CreateControl(param => param.UseBacklight),
             CreateControl(param => param.BacklightColor,
-                args => args.List.AddParameter(args.Name, args.Parameters.BacklightColor.a), 
+                args => args.List.AddParameter(args.Name, args.Parameters.BacklightColor.a, LilToonParameters.GroupName_Backlight), 
                 args =>
                 {
                     var color = args.Parameters.BacklightColor;
@@ -94,7 +94,6 @@ namespace gomoru.su.LightController
             }
 
             var @params = generator.DefaultParameters;
-
 
             foreach (var (renderer, material) in targets)
             {
@@ -185,11 +184,16 @@ namespace gomoru.su.LightController
 
             go.GetOrAddComponent<ModularAvatarParameters>(component =>
             {
+                var syncSettings = typeof(ParameterSyncSettings).GetFields().ToDictionary(x => x.Name, x => (bool)x.GetValue(generator.SyncSettings));
                 component.parameters.AddRange(parameters.Select(x =>
                 {
                     var p = x.ToParameterConfig();
                     p.saved = generator.SaveParameters;
                     p.remapTo = $"{ParameterNamePrefix}{p.nameOrPrefix}";
+                    if (syncSettings.TryGetValue(x.Group, out var flag) && !flag)
+                    {
+                        p.syncType = ParameterSyncType.NotSynced;
+                    }
                     return p;
                 }));
             });
@@ -230,31 +234,14 @@ namespace gomoru.su.LightController
             return result;
         }
 
-        private static List<ParameterControl.Parameter> AddParameter<T>(this List<ParameterControl.Parameter> list, string name, T value, bool boolAsFloat = false)
-        {
-            list.Add(new ParameterControl.Parameter()
-            {
-                Name = name,
-                Value = 
-                    typeof(T) == typeof(int) ? (int)(object)value :
-                    typeof(T) == typeof(float) ? (float)(object)value :
-                    typeof(T) == typeof(bool) ? (bool)(object)value ? 1f : 0f :
-                    0,
-                ParameterType =
-                    typeof(T) == typeof(int) ? AnimatorControllerParameterType.Int :
-                    typeof(T) == typeof(float) ? AnimatorControllerParameterType.Float :
-                    typeof(T) == typeof(bool) ? AnimatorControllerParameterType.Bool :
-                    0,
-                BoolAsFloat = boolAsFloat,
-            });
-            return list;
-        }
+        private static List<ParameterControl.Parameter> AddParameter<T>(this List<ParameterControl.Parameter> list, string name, T value, string group, bool boolAsFloat = false) => AddParameter(list, name, (object)value, typeof(T), group, boolAsFloat);
 
-        private static List<ParameterControl.Parameter> AddParameter(this List<ParameterControl.Parameter> list, string name, object value, Type type, bool boolAsFloat = false)
+        private static List<ParameterControl.Parameter> AddParameter(this List<ParameterControl.Parameter> list, string name, object value, Type type, string group, bool boolAsFloat = false)
         {
             list.Add(new ParameterControl.Parameter()
             {
                 Name = name,
+                Group = group,
                 Value =
                     type == typeof(int) ? (int)value :
                     type == typeof(float) ? (float)value :
@@ -290,7 +277,7 @@ namespace gomoru.su.LightController
 
             if (setParam == null)
             {
-                setParam = args => args.List.AddParameter(args.Name, targetField.GetValue(args.Parameters), targetField.FieldType, !isMaster && isToggle);
+                setParam = args => args.List.AddParameter(args.Name, targetField.GetValue(args.Parameters), targetField.FieldType, group, !isMaster && isToggle);
             }
 
             if (setCurves == null)
@@ -373,6 +360,7 @@ namespace gomoru.su.LightController
             public struct Parameter
             {
                 public string Name;
+                public string Group;
                 public float Value;
                 public AnimatorControllerParameterType ParameterType;
                 public bool BoolAsFloat;

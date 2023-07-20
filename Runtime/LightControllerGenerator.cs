@@ -34,6 +34,9 @@ namespace gomoru.su.LightController
         public float DistanceFadeEndMax = 1f;
 
         [SerializeField]
+        public bool AddResetButton = false;
+
+        [SerializeField]
         public bool UseMaterialPropertyAsDefault = false;
 
         [SerializeField]

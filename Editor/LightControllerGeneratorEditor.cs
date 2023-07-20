@@ -12,6 +12,8 @@ namespace gomoru.su.LightController
         private SerializedProperty SyncSettings;
         private SerializedProperty AddLightingControl;
         private SerializedProperty AddBacklightControl;
+        private SerializedProperty AddDistanceFadeControl;
+        private SerializedProperty DistanceFadeEndMax;
         private SerializedProperty UseMaterialPropertyAsDefault;
         private SerializedProperty DefaultParameters;
 
@@ -24,6 +26,8 @@ namespace gomoru.su.LightController
             SyncSettings = serializedObject.FindProperty(nameof(LightControllerGenerator.SyncSettings));
             AddLightingControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddLightingControl));
             AddBacklightControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddBacklightControl));
+            AddDistanceFadeControl = serializedObject.FindProperty(nameof(AddDistanceFadeControl));
+            DistanceFadeEndMax = serializedObject.FindProperty(nameof(DistanceFadeEndMax));
             UseMaterialPropertyAsDefault = serializedObject.FindProperty(nameof(LightControllerGenerator.UseMaterialPropertyAsDefault));
             DefaultParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.DefaultParameters));
         }
@@ -38,6 +42,12 @@ namespace gomoru.su.LightController
             EditorGUILayout.PropertyField(SyncSettings);
             EditorGUILayout.PropertyField(AddLightingControl);
             EditorGUILayout.PropertyField(AddBacklightControl);
+            EditorGUILayout.PropertyField(AddDistanceFadeControl);
+            EditorGUI.BeginDisabledGroup(!AddDistanceFadeControl.boolValue);
+            EditorGUI.indentLevel++;
+            EditorGUILayout.PropertyField(DistanceFadeEndMax);
+            EditorGUI.indentLevel--;
+            EditorGUI.EndDisabledGroup();
             EditorGUILayout.PropertyField(UseMaterialPropertyAsDefault, Label("Use material proeperty value as Default value"));
             EditorGUI.BeginDisabledGroup(UseMaterialPropertyAsDefault.boolValue);
             EditorGUILayout.PropertyField(DefaultParameters);

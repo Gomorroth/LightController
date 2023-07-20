@@ -18,7 +18,7 @@ namespace gomoru.su.LightController
 
         private static readonly ParameterControl[] Controls = new ParameterControl[]
         {
-            CreateControl(param => param.UseLighting, setCurves: args => {}),
+            CreateControl(param => param.UseLighting, setCurves: _ => {}),
             CreateControl(param => param.LightMinLimit),
             CreateControl(param => param.LightMaxLimit,
                 args => args.List.AddParameter(args.Name, (1 + args.Parameters.LightMaxLimit) / args.Generator.LightMaxLimitMax, LilToonParameters.GroupName_Lighting),
@@ -62,6 +62,12 @@ namespace gomoru.su.LightController
             CreateControl(param => param.BacklightBlur),
             CreateControl(param => param.BacklightDirectivity),
             CreateControl(param => param.BacklightViewStrength),
+
+            CreateControl(param => param.UseDistanceFade, setCurves: _ => { }),
+            CreateControl(param => param.DistanceFadeStart),
+            CreateControl(param => param.DistanceFadeEnd),
+            CreateControl(param => param.DistanceFadeStrength),
+            CreateControl(param => param.DistanceFadeBackfaceForceShadow),
         };
 
         public static void Generate(GameObject avatarObject, LightControllerGenerator generator)
@@ -257,6 +263,7 @@ namespace gomoru.su.LightController
             return list;
         }
 
+        private static Dictionary<string, FieldInfo> _limitters = typeof(LightControllerGenerator).GetFields().Where(x => x.GetCustomAttribute<LimitParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<LimitParameterAttribute>().Name);
         private static Dictionary<string, FieldInfo> _conditions;
 
         private static ParameterControl CreateControl<T>(
@@ -266,12 +273,16 @@ namespace gomoru.su.LightController
             Func<LightControllerGenerator, bool> condition = null)
         {
             var targetField = (parameter.Body as MemberExpression).Member as FieldInfo;
-            var nameAttr = targetField.GetCustomAttribute<NameAttribute>();
-            var group = targetField.GetCustomAttribute<GroupAttribute>()?.Group;
-            var isMaster = targetField.GetCustomAttribute<GroupMasterAttribute>() != null;
+            var attributes = targetField.GetCustomAttributes();
+
+            var nameAttr = attributes.GetAttribute<NameAttribute>();
+            var group = attributes.GetAttribute<GroupAttribute>()?.Group;
+            var isMaster = attributes.GetAttribute<GroupMasterAttribute>() != null;
+            var isToggle = attributes.GetAttribute<ToggleAttribute>() != null;
+            var vectorProxy = attributes.GetAttribute<VectorProxyAttribute>();
+
             var name = isMaster ? group : nameAttr?.Name ?? targetField.Name;
             var menuName = nameAttr?.MenuName ?? (group != null && name.StartsWith(group) ? name.Substring(group.Length) : name);
-            var isToggle = targetField.GetCustomAttribute<ToggleAttribute>() != null;
 
             bool boolAsFloat = !isMaster && isToggle;
 
@@ -286,6 +297,7 @@ namespace gomoru.su.LightController
                 setCurves = args =>
                 {
                     var (min, max) = range != null ? (range.min, range.max) : (0, 1);
+
                     var value = targetField.GetValue(args.Parameters);
 
                     float fValue = 0;
@@ -294,15 +306,34 @@ namespace gomoru.su.LightController
                     else
                         fValue = (float)value;
 
+                    if (_limitters.TryGetValue(targetField.Name, out var limitField))
+                    {
+                        var limit = (float)limitField.GetValue(args.Generator);
+                        max = limit;
+                        fValue = (1 + fValue) / limit;
+                    }
+
+
                     if (isMaster)
                     {
-                        args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{targetField.Name}", AnimationUtils.Constant(min));
-                        args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{targetField.Name}", AnimationUtils.Constant(max));
+                        var prop = $"{PropertyNamePrefix}{targetField.Name}";
+                        args.Default.SetCurve(args.Path, args.Type, prop, AnimationUtils.Constant(min));
+                        args.Control.SetCurve(args.Path, args.Type, prop, AnimationUtils.Constant(max));
                     }
                     else
                     {
-                        args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{targetField.Name}", AnimationUtils.Constant(fValue));
-                        args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{targetField.Name}", AnimationUtils.Linear(min, max));
+                        string prop;
+                        if (vectorProxy != null)
+                        {
+                            var target = vectorProxy.TargetName;
+                            prop = $"{PropertyNamePrefix}{target}.{"xyzw"[vectorProxy.Index]}";
+                        }
+                        else
+                        {
+                            prop = $"{PropertyNamePrefix}{targetField.Name}";
+                        }
+                        args.Default.SetCurve(args.Path, args.Type, prop, AnimationUtils.Constant(fValue));
+                        args.Control.SetCurve(args.Path, args.Type, prop, AnimationUtils.Linear(min, max));
                     }
                 };
             }
@@ -344,6 +375,8 @@ namespace gomoru.su.LightController
                 },
             };
         }
+
+        private static T GetAttribute<T>(this IEnumerable<Attribute> attributes) where T : Attribute => attributes.FirstOrDefault(x => x is T) as T;
 
         private sealed class ParameterControl
         {

@@ -15,6 +15,9 @@ namespace gomoru.su.LightController
         public bool SaveParameters = true;
 
         [SerializeField]
+        public ParameterSyncSettings SyncSettings = ParameterSyncSettings.Default;
+
+        [SerializeField]
         [ConditionParameter(LilToonParameters.GroupName_Lighting)]
         public bool AddLightingControl = true;
 
@@ -44,5 +47,17 @@ namespace gomoru.su.LightController
             else
                 Destroy(this);
         }
+    }
+
+    [Serializable]
+    public struct ParameterSyncSettings
+    {
+        [SerializeField]
+        public bool Lighting;
+
+        [SerializeField]
+        public bool Backlight;
+
+        public static ParameterSyncSettings Default => new ParameterSyncSettings() { Lighting = true, Backlight = true };
     }
 }

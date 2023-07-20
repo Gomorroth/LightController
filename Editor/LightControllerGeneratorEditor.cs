@@ -1,4 +1,6 @@
-﻿using UnityEditor;
+﻿using System;
+using UnityEditor;
+using UnityEditor.Animations;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 
@@ -77,9 +79,16 @@ namespace gomoru.su.LightController
                 EditorGUI.BeginDisabledGroup(generator == null || avatar == null);
                 if (GUILayout.Button("Generate Manually"))
                 {
-                    Generator.Generate(avatar.gameObject, generator);
-                    AssetDatabase.SaveAssets();
-                    generator.enabled = false;
+                    var path = EditorUtility.SaveFilePanelInProject("Save", $"LightControllerGeneratedArtifacts_{avatar.name}_{DateTime.Now:yyyyMMddHHmmss.fff}", "controller", "");
+                    if (!string.IsNullOrEmpty(path))
+                    {
+                        var fx = new AnimatorController();
+                        AssetDatabase.CreateAsset(fx, path);
+                        generator.FX = fx;
+                        Generator.Generate(avatar.gameObject, generator);
+                        AssetDatabase.SaveAssets();
+                        GameObject.DestroyImmediate(generator);
+                    }
                 }
                 EditorGUI.EndDisabledGroup();
             }

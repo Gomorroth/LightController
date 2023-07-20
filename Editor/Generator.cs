@@ -99,6 +99,14 @@ namespace gomoru.su.LightController
             
             var controls = Controls.Where(x => x.Condition(generator)).ToArray();
 
+            if (!controls.Any())
+            {
+                var installer = generator.GetComponent<ModularAvatarMenuInstaller>();
+                if (installer != null)
+                    installer.enabled = false;
+                return;
+            }
+
             foreach (var control in controls)
             {
                 control.Default = fx.CreateAnim($"{control.Name} Default");
@@ -272,6 +280,7 @@ namespace gomoru.su.LightController
             go.GetOrAddComponent<ModularAvatarParameters>(component =>
             {
                 var syncSettings = typeof(ParameterSyncSettings).GetFields().ToDictionary(x => x.Name, x => (bool)x.GetValue(generator.SyncSettings));
+                component.parameters.Clear();
                 component.parameters.AddRange(parameters.Select(x =>
                 {
                     var p = x.ToParameterConfig();

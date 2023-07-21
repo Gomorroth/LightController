@@ -47,6 +47,7 @@ namespace gomoru.su.LightController
         }
     }
 
+    [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
     public sealed class VectorProxyAttribute : Attribute
     {
         public string TargetName { get; set; }
@@ -58,4 +59,7 @@ namespace gomoru.su.LightController
             Index = index;
         }
     }
+
+    [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
+    public sealed class InternalPropertyAttribute : Attribute { }
 }

@@ -12,7 +12,7 @@ namespace gomoru.su.LightController
         public const string GroupName_Backlight = "Backlight";
         public const string GroupName_DistanceFade = "DistanceFade";
 
-        [HideInInspector, SerializeField]
+        [HideInInspector, SerializeField, InternalProperty]
         [Toggle, Name(MenuName = "Enable")]
         [GroupMaster, Group(GroupName_Lighting)]
         public bool UseLighting = false;
@@ -88,7 +88,7 @@ namespace gomoru.su.LightController
         public float BacklightViewStrength = 1;
 
 
-        [HideInInspector, SerializeField]
+        [HideInInspector, SerializeField, InternalProperty]
         [Toggle, Name(MenuName = "Enable")]
         [GroupMaster, Group(GroupName_DistanceFade)]
         public bool UseDistanceFade = false;
@@ -117,27 +117,5 @@ namespace gomoru.su.LightController
         [VectorProxy(nameof(DistanceFade), 3)]
         [Group(GroupName_DistanceFade)]
         public bool DistanceFadeBackfaceForceShadow = false;
-
-
-        public void SetValuesFromMaterial(Material material)
-        {
-            LightMinLimit = material.GetFloat($"_{nameof(LightMinLimit)}");
-            LightMaxLimit = material.GetFloat($"_{nameof(LightMaxLimit)}");
-            MonochromeLighting = material.GetFloat($"_{nameof(MonochromeLighting)}");
-            ShadowEnvStrength = material.GetFloat($"_{nameof(ShadowEnvStrength)}");
-            AsUnlit = material.GetFloat($"_{nameof(AsUnlit)}");
-            VertexLightStrength = material.GetFloat($"_{nameof(VertexLightStrength)}");
-
-            UseBacklight = material.GetInt($"_{nameof(UseBacklight)}") != 0;
-            BacklightColor = material.GetColor($"_{nameof(BacklightColor)}");
-            BacklightMainStrength = material.GetFloat($"_{nameof(BacklightMainStrength)}");
-            BacklightReceiveShadow = material.GetInt($"_{nameof(BacklightReceiveShadow)}") != 0;
-            BacklightBackfaceMask = material.GetInt($"_{nameof(BacklightBackfaceMask)}") != 0;
-            BacklightNormalStrength = material.GetFloat($"_{nameof(BacklightNormalStrength)}");
-            BacklightBorder = material.GetFloat($"_{nameof(BacklightBorder)}");
-            BacklightBlur = material.GetFloat($"_{nameof(BacklightBlur)}");
-            BacklightDirectivity = material.GetFloat($"_{nameof(BacklightDirectivity)}");
-            BacklightViewStrength = material.GetFloat($"_{nameof(BacklightViewStrength)}");
-        }
     }
 }

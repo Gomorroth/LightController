@@ -75,7 +75,6 @@ namespace gomoru.su.LightController
         private static Dictionary<string, FieldInfo> _limitters;
         private static Dictionary<string, FieldInfo> _conditions;
 
-
         public static void Generate(GameObject avatarObject, LightControllerGenerator generator)
         {
             var fx = generator.FX;
@@ -121,7 +120,7 @@ namespace gomoru.su.LightController
                 var type = renderer.GetType();
                 if (generator.UseMaterialPropertyAsDefault)
                 {
-                    @params.SetValuesFromMaterial(material);
+                    @params.SetParametersFromMaterial(material);
                 }
 
                 foreach(var control in controls)
@@ -472,6 +471,100 @@ namespace gomoru.su.LightController
         }
 
         private static T GetAttribute<T>(this IEnumerable<Attribute> attributes) where T : Attribute => attributes.FirstOrDefault(x => x is T) as T;
+
+        private delegate void InternalSetParametersFromMaterialDelegate(LilToonParameters parameters, Material material);
+        private static InternalSetParametersFromMaterialDelegate _internalSetParametersFromMaterial;
+
+        private static void SetParametersFromMaterial(this LilToonParameters parameters,  Material material)
+        {
+            if (_internalSetParametersFromMaterial == null)
+            {
+                try
+                {
+                    var method = new DynamicMethod("", null, new Type[] { typeof(LilToonParameters), typeof(Material) });
+
+                    var il = method.GetILGenerator();
+
+                    var fields = typeof(LilToonParameters).GetFields().Where(x => !x.IsLiteral && x.GetCustomAttribute<InternalPropertyAttribute>() == null).Select(x => (Field:x, Proxy:x.GetCustomAttribute<VectorProxyAttribute>()));
+
+                    var methodArgs = new Type[] { typeof(string) };
+                    var getFloat = typeof(Material).GetMethod(nameof(Material.GetFloat), methodArgs);
+                    var getInt = typeof(Material).GetMethod(nameof(Material.GetInt), methodArgs);
+                    var getVector = typeof(Material).GetMethod(nameof(Material.GetVector), methodArgs);
+                    var getColor = typeof(Material).GetMethod(nameof(Material.GetColor), methodArgs);
+
+                    foreach (var (field, _) in fields.Where(x => x.Proxy == null))
+                    {
+                        il.Emit(OpCodes.Ldarg_0);
+                        il.Emit(OpCodes.Ldarg_1);
+                        il.Emit(OpCodes.Ldstr, $"_{field.Name}");
+                        if (field.FieldType == typeof(float))
+                        {
+                            il.Emit(OpCodes.Callvirt, getFloat);
+                        }
+                        else if (field.FieldType == typeof(bool))
+                        {
+                            il.Emit(OpCodes.Callvirt, getInt);
+                            il.Emit(OpCodes.Ldc_I4_0);
+                            il.Emit(OpCodes.Cgt_Un);
+                        }
+                        else if (field.FieldType == typeof(Color))
+                        {
+                            il.Emit(OpCodes.Callvirt, getColor);
+                        }
+                        else if (field.FieldType == typeof(Vector4))
+                        {
+                            il.Emit(OpCodes.Callvirt, getVector);
+                        }
+                        il.Emit(OpCodes.Stfld, field);                    
+                    }
+
+                    foreach (var (field, _) in fields.Where(x => x.Proxy != null))
+                    {
+                        var attr = field.GetCustomAttribute<VectorProxyAttribute>();
+                        var target = fields.FirstOrDefault(x => x.Field.Name == attr.TargetName);
+                        if (target.Field != null)
+                        {
+                            il.Emit(OpCodes.Ldarg_0);
+                            il.Emit(OpCodes.Ldarg_0);
+                            il.Emit(OpCodes.Ldflda, target.Field);
+                            il.Emit(OpCodes.Conv_U);
+                            switch (attr.Index)
+                            {
+                                case 1:
+                                    il.Emit(OpCodes.Ldc_I4_4);
+                                    goto add;
+                                case 2:
+                                    il.Emit(OpCodes.Ldc_I4_8);
+                                    goto add;
+                                case 3:
+                                    il.Emit(OpCodes.Ldc_I4_S, 12);
+                                    goto add;
+                                add:
+                                    il.Emit(OpCodes.Add);
+                                    break;
+                            }
+                            il.Emit(OpCodes.Ldind_R4);
+                            if (field.FieldType == typeof(bool))
+                            {
+                                il.Emit(OpCodes.Ldc_R4, 0f);
+                                il.Emit(OpCodes.Ceq);
+                                il.Emit(OpCodes.Ldc_I4_0);
+                                il.Emit(OpCodes.Ceq);
+
+                            }
+                            il.Emit(OpCodes.Stfld, field);
+                        }
+                    }
+
+                    il.Emit(OpCodes.Ret);
+                    _internalSetParametersFromMaterial = method.CreateDelegate(typeof(InternalSetParametersFromMaterialDelegate)) as InternalSetParametersFromMaterialDelegate;
+                }
+                catch (Exception e) { Debug.LogError(e); }
+            }
+
+            _internalSetParametersFromMaterial?.Invoke(parameters, material);
+        }
 
         private sealed class ParameterControl
         {

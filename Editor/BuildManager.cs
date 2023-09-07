@@ -28,7 +28,7 @@ namespace gomoru.su.LightController
 
         public bool OnPreprocessAvatar(GameObject avatarGameObject)
         {
-            var generator = avatarGameObject.GetComponentInChildren<LightControllerGenerator>();
+            var generator = avatarGameObject.GetComponentInChildren<LightController>();
             if (generator != null)
             {
                 Process(avatarGameObject, generator);
@@ -37,7 +37,7 @@ namespace gomoru.su.LightController
             return true;
         }
 
-        public static void Process(GameObject avatar, LightControllerGenerator generator)
+        public static void Process(GameObject avatar, LightController generator)
         {
             Generator.Generate(avatar, generator);
             AssetDatabase.SaveAssets();

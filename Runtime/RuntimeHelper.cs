@@ -4,6 +4,6 @@ namespace gomoru.su.LightController
 {
     public static class RuntimeHelper
     {
-        public static Action<LightControllerGenerator> OnAwake;
+        public static Action<LightController> OnAwake;
     }
 }

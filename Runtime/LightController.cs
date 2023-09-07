@@ -5,7 +5,7 @@ namespace gomoru.su.LightController
 {
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(-10000)]
-    public sealed class LightControllerGenerator : MonoBehaviour, IEditorOnly
+    public sealed class LightController : MonoBehaviour, IEditorOnly
     {
         [SerializeField, Range(1f, 10f)]
         [LimitParameter(nameof(LilToonParameters.LightMaxLimit))]

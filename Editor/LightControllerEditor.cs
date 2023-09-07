@@ -6,7 +6,7 @@ using VRC.SDK3.Avatars.Components;
 
 namespace gomoru.su.LightController
 {
-    [CustomEditor(typeof(LightControllerGenerator))]
+    [CustomEditor(typeof(LightController))]
     public sealed class LightControllerGeneratorEditor : Editor
     {
         private SerializedProperty SaveParameters;
@@ -24,16 +24,16 @@ namespace gomoru.su.LightController
 
         private void OnEnable()
         {
-            SaveParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.SaveParameters));
-            SyncSettings = serializedObject.FindProperty(nameof(LightControllerGenerator.SyncSettings));
-            AddLightingControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddLightingControl));
-            LightMaxLimitMax = serializedObject.FindProperty(nameof(LightControllerGenerator.LightMaxLimitMax));
-            AddBacklightControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddBacklightControl));
-            AddDistanceFadeControl = serializedObject.FindProperty(nameof(LightControllerGenerator.AddDistanceFadeControl));
-            DistanceFadeEndMax = serializedObject.FindProperty(nameof(LightControllerGenerator.DistanceFadeEndMax));
-            AddResetButton = serializedObject.FindProperty(nameof(LightControllerGenerator.AddResetButton));
-            UseMaterialPropertyAsDefault = serializedObject.FindProperty(nameof(LightControllerGenerator.UseMaterialPropertyAsDefault));
-            DefaultParameters = serializedObject.FindProperty(nameof(LightControllerGenerator.DefaultParameters));
+            SaveParameters = serializedObject.FindProperty(nameof(LightController.SaveParameters));
+            SyncSettings = serializedObject.FindProperty(nameof(LightController.SyncSettings));
+            AddLightingControl = serializedObject.FindProperty(nameof(LightController.AddLightingControl));
+            LightMaxLimitMax = serializedObject.FindProperty(nameof(LightController.LightMaxLimitMax));
+            AddBacklightControl = serializedObject.FindProperty(nameof(LightController.AddBacklightControl));
+            AddDistanceFadeControl = serializedObject.FindProperty(nameof(LightController.AddDistanceFadeControl));
+            DistanceFadeEndMax = serializedObject.FindProperty(nameof(LightController.DistanceFadeEndMax));
+            AddResetButton = serializedObject.FindProperty(nameof(LightController.AddResetButton));
+            UseMaterialPropertyAsDefault = serializedObject.FindProperty(nameof(LightController.UseMaterialPropertyAsDefault));
+            DefaultParameters = serializedObject.FindProperty(nameof(LightController.DefaultParameters));
         }
 
         public override void OnInspectorGUI ()
@@ -74,7 +74,7 @@ namespace gomoru.su.LightController
 
             if (_debugFoldoutOpen = EditorGUILayout.Foldout(_debugFoldoutOpen, Label("Debug")))
             {
-                var generator = target as LightControllerGenerator;
+                var generator = target as LightController;
                 var avatar = generator?.GetComponentInParent<VRCAvatarDescriptor>();
                 EditorGUI.BeginDisabledGroup(generator == null || avatar == null);
                 if (GUILayout.Button("Generate Manually"))
@@ -85,7 +85,7 @@ namespace gomoru.su.LightController
                         var fx = new AnimatorController();
                         AssetDatabase.CreateAsset(fx, path);
                         generator.FX = fx;
-                        Generator.Generate(avatar.gameObject, generator);
+                        LightControllerGenerator.Generate(avatar.gameObject, generator);
                         AssetDatabase.SaveAssets();
                         GameObject.DestroyImmediate(generator);
                     }

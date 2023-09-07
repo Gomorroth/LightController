@@ -12,15 +12,15 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace gomoru.su.LightController
 {
-    public static class Generator
+    public static class LightControllerGenerator
     {
         private const string PropertyNamePrefix = "material._";
         private const string ParameterNamePrefix = "LightController";
 
-        static Generator()
+        static LightControllerGenerator()
         {
-             _limitters = typeof(LightControllerGenerator).GetFields().Where(x => x.GetCustomAttribute<LimitParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<LimitParameterAttribute>().Name);
-             _conditions = typeof(LightControllerGenerator).GetFields().Where(x => x.GetCustomAttribute<ConditionParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<ConditionParameterAttribute>().Name);
+             _limitters = typeof(LightController).GetFields().Where(x => x.GetCustomAttribute<LimitParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<LimitParameterAttribute>().Name);
+             _conditions = typeof(LightController).GetFields().Where(x => x.GetCustomAttribute<ConditionParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<ConditionParameterAttribute>().Name);
 
             Controls = new ParameterControl[]
             {
@@ -75,7 +75,7 @@ namespace gomoru.su.LightController
         private static Dictionary<string, FieldInfo> _limitters;
         private static Dictionary<string, FieldInfo> _conditions;
 
-        public static void Generate(GameObject avatarObject, LightControllerGenerator generator)
+        public static void Generate(GameObject avatarObject, LightController generator)
         {
             var fx = generator.FX;
             var go = generator.gameObject;
@@ -354,9 +354,9 @@ namespace gomoru.su.LightController
 
         private static ParameterControl CreateControl<T>(
             Expression<Func<LilToonParameters, T>> parameter,
-            Action<(string Name, LightControllerGenerator Generator, LilToonParameters Parameters, List<ParameterControl.Parameter> List)> setParam = null,
-            Action<(string Path, Type Type, AnimationClip Default, AnimationClip Control, Material Material, LightControllerGenerator Generator, LilToonParameters Parameters)> setCurves = null,
-            Func<LightControllerGenerator, bool> condition = null)
+            Action<(string Name, LightController Generator, LilToonParameters Parameters, List<ParameterControl.Parameter> List)> setParam = null,
+            Action<(string Path, Type Type, AnimationClip Default, AnimationClip Control, Material Material, LightController Generator, LilToonParameters Parameters)> setCurves = null,
+            Func<LightController, bool> condition = null)
         {
             var targetField = (parameter.Body as MemberExpression).Member as FieldInfo;
             var attributes = targetField.GetCustomAttributes();
@@ -571,9 +571,9 @@ namespace gomoru.su.LightController
             public string Name;
             public string Group = null;
             public bool IsMaster = false;
-            public Func<LightControllerGenerator, bool> Condition = _ => true;
-            public Action<(string Name, LightControllerGenerator Generator, LilToonParameters Parameters, List<Parameter> List)> Parameters;
-            public Action<(string Path, Type Type, AnimationClip Default, AnimationClip Control, Material Material, LightControllerGenerator Generator, LilToonParameters Parameters)> SetAnimationCurves;
+            public Func<LightController, bool> Condition = _ => true;
+            public Action<(string Name, LightController Generator, LilToonParameters Parameters, List<Parameter> List)> Parameters;
+            public Action<(string Path, Type Type, AnimationClip Default, AnimationClip Control, Material Material, LightController Generator, LilToonParameters Parameters)> SetAnimationCurves;
             public Action<(string Name, ParameterControl Self, List<VRCExpressionsMenu.Control> Controls)> CreateMenu;
             public Action<(LilToonParameters Parameters, Material Material)> GetValueFromMaterial;
             public AnimationClip Control;

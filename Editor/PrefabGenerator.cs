@@ -6,12 +6,12 @@ using UnityEngine;
 namespace gomoru.su.LightController
 {
     [InitializeOnLoad]
-    internal static class LightController
+    internal static class PrefabGenerator
     {
         private const string EditorPrefsKey = "gomoru.su.LightController.generatedPrefabGUID";
         private const string PrefabPath = "Assets/LightController/LightController.prefab";
 
-        static LightController()
+        static PrefabGenerator()
         {
             EditorApplication.delayCall += () =>
             {
@@ -24,7 +24,7 @@ namespace gomoru.su.LightController
                         AssetDatabase.CreateFolder(Path.GetDirectoryName(directory), Path.GetFileName(directory));
                     }
                     var prefab = new GameObject(Path.GetFileNameWithoutExtension(PrefabPath)) { hideFlags = HideFlags.HideInHierarchy }; 
-                    var generator = prefab.AddComponent<LightControllerGenerator>();
+                    var generator = prefab.AddComponent<LightController>();
                     generator.SaveParameters = false;
                     prefab.AddComponent<ModularAvatarMenuInstaller>();
                     PrefabUtility.SaveAsPrefabAsset(prefab, PrefabPath);

@@ -197,6 +197,7 @@ namespace gomoru.su.LightController
                 }
 
                 stateMachine.AddState(idle, stateMachine.entryPosition + new Vector3(0, 200));
+                stateMachine.defaultState = idle;
 
                 for (int i = 0; i < states.Length; i++)
                 {

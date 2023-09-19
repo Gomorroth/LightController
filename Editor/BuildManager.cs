@@ -39,7 +39,7 @@ namespace gomoru.su.LightController
 
         public static void Process(GameObject avatar, LightController generator)
         {
-            Generator.Generate(avatar, generator);
+            LightControllerGenerator.Generate(avatar, generator);
             AssetDatabase.SaveAssets();
         }
     }

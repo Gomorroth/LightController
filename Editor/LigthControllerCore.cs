@@ -1,23 +1,22 @@
 ﻿using nadena.dev.modular_avatar.core;
+using nadena.dev.ndmf;
+using nadena.dev.ndmf.util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Reflection.Emit;
 using UnityEditor.Animations;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
+
 namespace gomoru.su.LightController
 {
-    public static class LightControllerGenerator
+    internal sealed partial class LightControllerCore
     {
-        private const string PropertyNamePrefix = "material._";
-        private const string ParameterNamePrefix = "LightController";
-
-        static LightControllerGenerator()
+        static LightControllerCore()
         {
              _limitters = typeof(LightController).GetFields().Where(x => x.GetCustomAttribute<LimitParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<LimitParameterAttribute>().Name);
              _conditions = typeof(LightController).GetFields().Where(x => x.GetCustomAttribute<ConditionParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<ConditionParameterAttribute>().Name);
@@ -75,15 +74,16 @@ namespace gomoru.su.LightController
         private static Dictionary<string, FieldInfo> _limitters;
         private static Dictionary<string, FieldInfo> _conditions;
 
-        public static void Generate(GameObject avatarObject, LightController generator)
-        {
-            var fx = generator.FX;
-            var go = generator.gameObject;
-            if (fx == null)
-                fx = Utils.CreateTemporaryAsset();
+        private const string PropertyNamePrefix = "material._";
+        private const string ParameterNamePrefix = "LightController";
 
-            var targets = avatarObject.GetComponentsInChildren<Renderer>(true)
-                .Where(x => (x is MeshRenderer || x is SkinnedMeshRenderer) && x.tag != "EditorOnly")
+        private static void Generate(BuildContext context, LightController controller)
+        {
+            var fx = new AnimatorController() { name = "LightController" }.AddTo(context.AssetContainer);
+            var go = controller.gameObject;
+
+            var targets = context.AvatarRootObject.GetComponentsInChildren<Renderer>(true)
+                .Where(x => (x is MeshRenderer || x is SkinnedMeshRenderer) && !x.CompareTag("EditorOnly") && !controller.Excludes.Contains(x.gameObject))
                 .Select(x =>
                     (Renderer: x,
                      Material: x.sharedMaterials
@@ -96,11 +96,11 @@ namespace gomoru.su.LightController
 
             List<ParameterControl.Parameter> parameters = new List<ParameterControl.Parameter>();
             
-            var controls = Controls.Where(x => x.Condition(generator)).ToArray();
+            var controls = Controls.Where(x => x.Condition(controller)).ToArray();
 
             if (!controls.Any())
             {
-                var installer = generator.GetComponent<ModularAvatarMenuInstaller>();
+                var installer = controller.GetComponent<ModularAvatarMenuInstaller>();
                 if (installer != null)
                     installer.enabled = false;
                 return;
@@ -112,20 +112,16 @@ namespace gomoru.su.LightController
                 control.Control = fx.CreateAnim(control.Name);
             }
 
-            var @params = generator.DefaultParameters;
+            var @params = controller.DefaultParameters;
 
             foreach (var (renderer, material) in targets)
             {
-                var path = renderer.transform.GetRelativePath(avatarObject.transform);
+                var path = renderer.AvatarRootPath();
                 var type = renderer.GetType();
-                if (generator.UseMaterialPropertyAsDefault)
-                {
-                    @params.SetParametersFromMaterial(material);
-                }
 
                 foreach(var control in controls)
                 {
-                    control.SetAnimationCurves((path, type, control.Default, control.Control, material, generator, @params));
+                    control.SetAnimationCurves((path, type, control.Default, control.Control, material, controller, @params));
                 }
             }
 
@@ -135,7 +131,7 @@ namespace gomoru.su.LightController
                 {
                     name = control.Name,
                     defaultWeight = 1,
-                    stateMachine = new AnimatorStateMachine() { name = control.Name }.HideInHierarchy().AddTo(fx),
+                    stateMachine = new AnimatorStateMachine() { name = control.Name }.HideInHierarchy().AddTo(context.AssetContainer),
                 };
 
                 var stateMachine = layer.stateMachine;
@@ -156,23 +152,23 @@ namespace gomoru.su.LightController
 
                 fx.AddLayer(layer);
 
-                control.Parameters((control.Name, generator, @params, parameters));
+                control.Parameters((control.Name, controller, @params, parameters));
             }
 
             var groups = controls.Select(y => y.Group).Where(y => y != null).Distinct();
             int groupCount = groups.Count();
 
-            if (generator.AddResetButton)
+            if (controller.AddResetButton)
             {
                 var layer = new AnimatorControllerLayer()
                 {
                     name = "Reset",
                     defaultWeight = 1,
-                    stateMachine = new AnimatorStateMachine() { name = "Reset" }.HideInHierarchy().AddTo(fx),
+                    stateMachine = new AnimatorStateMachine() { name = "Reset" }.HideInHierarchy().AddTo(context.AssetContainer),
                 };
                 var stateMachine = layer.stateMachine;
 
-                var blank = new AnimationClip() { name = "Blank" }.HideInHierarchy().AddTo(fx);
+                var blank = new AnimationClip() { name = "Blank" }.HideInHierarchy().AddTo(context.AssetContainer);
 
                 var idle = stateMachine.CreateState("Idle", blank);
                 var states = new AnimatorState[groupCount];
@@ -197,7 +193,6 @@ namespace gomoru.su.LightController
                 }
 
                 stateMachine.AddState(idle, stateMachine.entryPosition + new Vector3(0, 200));
-                stateMachine.defaultState = idle;
 
                 for (int i = 0; i < states.Length; i++)
                 {
@@ -233,7 +228,7 @@ namespace gomoru.su.LightController
 
             go.GetOrAddComponent<ModularAvatarMenuInstaller>(x =>
             {
-                var mainMenu = CreateExpressionMenu("Main Menu").AddTo(fx);
+                var mainMenu = CreateExpressionMenu("Main Menu").AddTo(context.AssetContainer);
              
                 Dictionary<string, VRCExpressionsMenu> categories = new Dictionary<string, VRCExpressionsMenu>();
 
@@ -244,7 +239,7 @@ namespace gomoru.su.LightController
                     {
                         if (!categories.TryGetValue(control.Group, out menu))
                         {
-                            menu = CreateExpressionMenu($"{control.Group} Menu").AddTo(fx);
+                            menu = CreateExpressionMenu($"{control.Group} Menu").AddTo(context.AssetContainer);
                             mainMenu.controls.Add(new VRCExpressionsMenu.Control() { name = control.Group, type = VRCExpressionsMenu.Control.ControlType.SubMenu, subMenu = menu });
                             categories.Add(control.Group, menu);
                         }
@@ -258,9 +253,9 @@ namespace gomoru.su.LightController
                     name = "Light Controller",
                     type = VRCExpressionsMenu.Control.ControlType.SubMenu,
                     subMenu = mainMenu,
-                }).AddTo(fx);
+                }).AddTo(context.AssetContainer);
 
-                if (generator.AddResetButton)
+                if (controller.AddResetButton)
                 {
                     foreach(var (category, i) in categories.Select((a, i) => (a, i)))
                     {
@@ -279,78 +274,29 @@ namespace gomoru.su.LightController
 
             go.GetOrAddComponent<ModularAvatarParameters>(component =>
             {
-                var syncSettings = typeof(ParameterSyncSettings).GetFields().ToDictionary(x => x.Name, x => (bool)x.GetValue(generator.SyncSettings));
+                var syncSettings = typeof(ParameterSyncSettings).GetFields().ToDictionary(x => x.Name, x => (bool)x.GetValue(controller.SyncSettings));
                 component.parameters.Clear();
                 component.parameters.AddRange(parameters.Select(x =>
                 {
                     var p = x.ToParameterConfig();
-                    p.saved = generator.SaveParameters;
+                    p.saved = controller.SaveParameters;
                     p.remapTo = $"{ParameterNamePrefix}{p.nameOrPrefix}";
                     if (x.Group == null || (syncSettings.TryGetValue(x.Group, out var flag) && !flag))
                     {
-                        p.localOnly = true;
+                        p.syncType = ParameterSyncType.NotSynced;
                     }
                     return p;
                 }));
             });
         }
 
-        private static List<VRCExpressionsMenu.Control> CreateRadialPuppet(this List<VRCExpressionsMenu.Control> controls, string name, string parameterName = null)
-        {
-            var control = new VRCExpressionsMenu.Control()
-            {
-                name = name,
-                type = VRCExpressionsMenu.Control.ControlType.RadialPuppet,
-                subParameters = new VRCExpressionsMenu.Control.Parameter[] { new VRCExpressionsMenu.Control.Parameter() { name = parameterName ?? name } }
-            };
-            controls.Add(control);
-            return controls;
-        }
-
-        private static List<VRCExpressionsMenu.Control> CreateToggle(this List<VRCExpressionsMenu.Control> controls, string name, string parameterName = null)
-        {
-            var control = new VRCExpressionsMenu.Control()
-            {
-                name = name,
-                type = VRCExpressionsMenu.Control.ControlType.Toggle,
-                parameter = new VRCExpressionsMenu.Control.Parameter() { name = parameterName ?? name },
-            };
-            controls.Add(control);
-            return controls;
-        }
-
-        private static AnimationClip CreateAnim(this AnimatorController parent, string name = null) => new AnimationClip() { name = name }.AddTo(parent);
-        private static AnimatorState CreateState(this AnimatorStateMachine parent, string name, AnimationClip motion = null) => new AnimatorState() { name = name, writeDefaultValues = false, motion = motion }.HideInHierarchy().AddTo(parent);
         private static VRCExpressionsMenu CreateExpressionMenu(string name, VRCExpressionsMenu.Control control = null)
         {
             var result = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
             result.name = name;
             if (control != null)
-            result.controls.Add(control);
+                result.controls.Add(control);
             return result;
-        }
-
-        private static List<ParameterControl.Parameter> AddParameter<T>(this List<ParameterControl.Parameter> list, string name, T value, string group, bool boolAsFloat = false) => AddParameter(list, name, value, typeof(T), group, boolAsFloat);
-
-        private static List<ParameterControl.Parameter> AddParameter(this List<ParameterControl.Parameter> list, string name, object value, Type type, string group, bool boolAsFloat = false)
-        {
-            list.Add(new ParameterControl.Parameter()
-            {
-                Name = name,
-                Group = group,
-                Value =
-                    type == typeof(int) ? (int)value :
-                    type == typeof(float) ? (float)value :
-                    type == typeof(bool) ? (bool)value ? 1f : 0f :
-                    0,
-                ParameterType =
-                    type == typeof(int) ? AnimatorControllerParameterType.Int :
-                    type == typeof(float) ? AnimatorControllerParameterType.Float :
-                    type == typeof(bool) ? AnimatorControllerParameterType.Bool :
-                    0,
-                BoolAsFloat = boolAsFloat,
-            });
-            return list;
         }
 
         private static ParameterControl CreateControl<T>(
@@ -471,167 +417,5 @@ namespace gomoru.su.LightController
             };
         }
 
-        private static T GetAttribute<T>(this IEnumerable<Attribute> attributes) where T : Attribute => attributes.FirstOrDefault(x => x is T) as T;
-
-        private delegate void InternalSetParametersFromMaterialDelegate(LilToonParameters parameters, Material material);
-        private static InternalSetParametersFromMaterialDelegate _internalSetParametersFromMaterial;
-
-        private static void SetParametersFromMaterial(this LilToonParameters parameters,  Material material)
-        {
-            if (_internalSetParametersFromMaterial == null)
-            {
-                try
-                {
-                    var method = new DynamicMethod("", null, new Type[] { typeof(LilToonParameters), typeof(Material) });
-
-                    var il = method.GetILGenerator();
-
-                    var fields = typeof(LilToonParameters).GetFields().Where(x => !x.IsLiteral && x.GetCustomAttribute<InternalPropertyAttribute>() == null).Select(x => (Field:x, Proxy:x.GetCustomAttribute<VectorProxyAttribute>()));
-
-                    var methodArgs = new Type[] { typeof(string) };
-                    var getFloat = typeof(Material).GetMethod(nameof(Material.GetFloat), methodArgs);
-                    var getInt = typeof(Material).GetMethod(nameof(Material.GetInt), methodArgs);
-                    var getVector = typeof(Material).GetMethod(nameof(Material.GetVector), methodArgs);
-                    var getColor = typeof(Material).GetMethod(nameof(Material.GetColor), methodArgs);
-
-                    foreach (var (field, _) in fields.Where(x => x.Proxy == null))
-                    {
-                        il.Emit(OpCodes.Ldarg_0);
-                        il.Emit(OpCodes.Ldarg_1);
-                        il.Emit(OpCodes.Ldstr, $"_{field.Name}");
-                        if (field.FieldType == typeof(float))
-                        {
-                            il.Emit(OpCodes.Callvirt, getFloat);
-                        }
-                        else if (field.FieldType == typeof(bool))
-                        {
-                            il.Emit(OpCodes.Callvirt, getInt);
-                            il.Emit(OpCodes.Ldc_I4_0);
-                            il.Emit(OpCodes.Cgt_Un);
-                        }
-                        else if (field.FieldType == typeof(Color))
-                        {
-                            il.Emit(OpCodes.Callvirt, getColor);
-                        }
-                        else if (field.FieldType == typeof(Vector4))
-                        {
-                            il.Emit(OpCodes.Callvirt, getVector);
-                        }
-                        il.Emit(OpCodes.Stfld, field);                    
-                    }
-
-                    foreach (var (field, _) in fields.Where(x => x.Proxy != null))
-                    {
-                        var attr = field.GetCustomAttribute<VectorProxyAttribute>();
-                        var target = fields.FirstOrDefault(x => x.Field.Name == attr.TargetName);
-                        if (target.Field != null)
-                        {
-                            il.Emit(OpCodes.Ldarg_0);
-                            il.Emit(OpCodes.Ldarg_0);
-                            il.Emit(OpCodes.Ldflda, target.Field);
-                            il.Emit(OpCodes.Conv_U);
-                            switch (attr.Index)
-                            {
-                                case 1:
-                                    il.Emit(OpCodes.Ldc_I4_4);
-                                    goto add;
-                                case 2:
-                                    il.Emit(OpCodes.Ldc_I4_8);
-                                    goto add;
-                                case 3:
-                                    il.Emit(OpCodes.Ldc_I4_S, 12);
-                                    goto add;
-                                add:
-                                    il.Emit(OpCodes.Add);
-                                    break;
-                            }
-                            il.Emit(OpCodes.Ldind_R4);
-                            if (field.FieldType == typeof(bool))
-                            {
-                                il.Emit(OpCodes.Ldc_R4, 0f);
-                                il.Emit(OpCodes.Ceq);
-                                il.Emit(OpCodes.Ldc_I4_0);
-                                il.Emit(OpCodes.Ceq);
-
-                            }
-                            il.Emit(OpCodes.Stfld, field);
-                        }
-                    }
-
-                    il.Emit(OpCodes.Ret);
-                    _internalSetParametersFromMaterial = method.CreateDelegate(typeof(InternalSetParametersFromMaterialDelegate)) as InternalSetParametersFromMaterialDelegate;
-                }
-                catch (Exception e) { Debug.LogError(e); }
-            }
-
-            _internalSetParametersFromMaterial?.Invoke(parameters, material);
-        }
-
-        private sealed class ParameterControl
-        {
-            public string Name;
-            public string Group = null;
-            public bool IsMaster = false;
-            public Func<LightController, bool> Condition = _ => true;
-            public Action<(string Name, LightController Generator, LilToonParameters Parameters, List<Parameter> List)> Parameters;
-            public Action<(string Path, Type Type, AnimationClip Default, AnimationClip Control, Material Material, LightController Generator, LilToonParameters Parameters)> SetAnimationCurves;
-            public Action<(string Name, ParameterControl Self, List<VRCExpressionsMenu.Control> Controls)> CreateMenu;
-            public Action<(LilToonParameters Parameters, Material Material)> GetValueFromMaterial;
-            public AnimationClip Control;
-            public AnimationClip Default;
-
-            public struct Parameter
-            {
-                public string Name;
-                public string Group;
-                public float Value;
-                public AnimatorControllerParameterType ParameterType;
-                public bool BoolAsFloat;
-
-                public ParameterConfig ToParameterConfig()
-                {
-                    var result = new ParameterConfig()
-                    {
-                        nameOrPrefix = Name,
-                        defaultValue = Value,
-                    };
-                    switch (ParameterType)
-                    {
-                        case AnimatorControllerParameterType.Float:
-                            result.syncType = ParameterSyncType.Float;
-                            break;
-                        case AnimatorControllerParameterType.Int:
-                            result.syncType = ParameterSyncType.Int;
-                            break;
-                        case AnimatorControllerParameterType.Bool:
-                            result.syncType = ParameterSyncType.Bool;
-                            break;
-                    }
-                    return result;
-                }
-
-                public AnimatorControllerParameter ToControllerParameter()
-                {
-                    var result = new AnimatorControllerParameter()
-                    {
-                        name = Name,
-                        type = ParameterType == AnimatorControllerParameterType.Bool && BoolAsFloat ? AnimatorControllerParameterType.Float : ParameterType,
-                    };
-                    switch (result.type)
-                    {
-                        case AnimatorControllerParameterType.Float:
-                            result.defaultFloat = Value;
-                            break;
-                        case AnimatorControllerParameterType.Int:
-                            result.defaultInt = (int)Value;
-                            break;
-                        case AnimatorControllerParameterType.Bool:
-                            result.defaultBool = Value != 0;
-                            break;
-                    }
-                    return result;
-                }
-            }
-        }
     }
 }

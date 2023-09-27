@@ -1,10 +1,10 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 using VRC.SDKBase;
 
 namespace gomoru.su.LightController
 {
     [DisallowMultipleComponent]
-    [DefaultExecutionOrder(-10000)]
     public sealed class LightController : MonoBehaviour, IEditorOnly
     {
         [SerializeField, Range(1f, 10f)]
@@ -37,26 +37,11 @@ namespace gomoru.su.LightController
         public bool AddResetButton = false;
 
         [SerializeField]
-        public bool UseMaterialPropertyAsDefault = false;
-
-        [SerializeField]
         public LilToonParameters DefaultParameters = new LilToonParameters();
 
-#if UNITY_EDITOR
-
-        [HideInInspector]
-        public UnityEditor.Animations.AnimatorController FX;
-
-#endif
+        [SerializeField]
+        public List<GameObject> Excludes = new List<GameObject>();
 
         private void OnEnable() { }
-
-        private void Awake()
-        {
-            if (enabled)
-                RuntimeHelper.OnAwake?.Invoke(this);
-            else
-                Destroy(this);
-        }
     }
 }

@@ -1,13 +1,11 @@
-﻿using System;
-using UnityEditor;
-using UnityEditor.Animations;
+﻿using UnityEditor;
 using UnityEngine;
-using VRC.SDK3.Avatars.Components;
 
 namespace gomoru.su.LightController
 {
     [CustomEditor(typeof(LightController))]
-    public sealed class LightControllerGeneratorEditor : Editor
+    [CanEditMultipleObjects]
+    public sealed class LightControllerEditor : Editor
     {
         private SerializedProperty SaveParameters;
         private SerializedProperty SyncSettings;
@@ -16,11 +14,11 @@ namespace gomoru.su.LightController
         private SerializedProperty AddBacklightControl;
         private SerializedProperty AddDistanceFadeControl;
         private SerializedProperty DistanceFadeEndMax;
-        private SerializedProperty UseMaterialPropertyAsDefault;
         private SerializedProperty DefaultParameters;
         private SerializedProperty AddResetButton;
+        private SerializedProperty Excludes;
 
-        private bool _debugFoldoutOpen;
+        private static Material _referenceMaterial;
 
         private void OnEnable()
         {
@@ -32,8 +30,8 @@ namespace gomoru.su.LightController
             AddDistanceFadeControl = serializedObject.FindProperty(nameof(LightController.AddDistanceFadeControl));
             DistanceFadeEndMax = serializedObject.FindProperty(nameof(LightController.DistanceFadeEndMax));
             AddResetButton = serializedObject.FindProperty(nameof(LightController.AddResetButton));
-            UseMaterialPropertyAsDefault = serializedObject.FindProperty(nameof(LightController.UseMaterialPropertyAsDefault));
             DefaultParameters = serializedObject.FindProperty(nameof(LightController.DefaultParameters));
+            Excludes = serializedObject.FindProperty(nameof(LightController.Excludes));
         }
 
         public override void OnInspectorGUI ()
@@ -57,13 +55,30 @@ namespace gomoru.su.LightController
             EditorGUILayout.PropertyField(DistanceFadeEndMax);
             EditorGUI.indentLevel--;
             EditorGUI.EndDisabledGroup();
-            EditorGUILayout.PropertyField(UseMaterialPropertyAsDefault);
             EditorGUILayout.PropertyField(AddResetButton);
 
             EditorGUILayout.Separator();
-            EditorGUI.BeginDisabledGroup(UseMaterialPropertyAsDefault.boolValue);
             EditorGUILayout.PropertyField(DefaultParameters);
-            EditorGUI.EndDisabledGroup();
+            if (DefaultParameters.isExpanded)
+            {
+                EditorGUILayout.Separator();
+                EditorGUILayout.BeginHorizontal();
+                _referenceMaterial = EditorGUILayout.ObjectField(GUIContent.none, _referenceMaterial, typeof(Material), true) as Material;
+                EditorGUI.BeginDisabledGroup(_referenceMaterial == null);
+                if (GUILayout.Button("Load"))
+                {
+                    foreach(var target in targets)
+                    {
+                        Utils.SetParametersFromMaterial((target as LightController).DefaultParameters, _referenceMaterial);
+                        EditorUtility.SetDirty(target);
+                    }
+                }
+                EditorGUI.EndDisabledGroup();
+                EditorGUILayout.EndHorizontal();
+            }
+
+            EditorGUILayout.Separator();
+            EditorGUILayout.PropertyField(Excludes);
 
             EditorGUILayout.Separator();
 
@@ -71,36 +86,6 @@ namespace gomoru.su.LightController
             {
                 serializedObject.ApplyModifiedProperties();
             }
-
-            if (_debugFoldoutOpen = EditorGUILayout.Foldout(_debugFoldoutOpen, Label("Debug")))
-            {
-                var generator = target as LightController;
-                var avatar = generator?.GetComponentInParent<VRCAvatarDescriptor>();
-                EditorGUI.BeginDisabledGroup(generator == null || avatar == null);
-                if (GUILayout.Button("Generate Manually"))
-                {
-                    var path = EditorUtility.SaveFilePanelInProject("Save", $"LightControllerGeneratedArtifacts_{avatar.name}_{DateTime.Now:yyyyMMddHHmmss.fff}", "controller", "");
-                    if (!string.IsNullOrEmpty(path))
-                    {
-                        var fx = new AnimatorController();
-                        AssetDatabase.CreateAsset(fx, path);
-                        generator.FX = fx;
-                        LightControllerGenerator.Generate(avatar.gameObject, generator);
-                        AssetDatabase.SaveAssets();
-                        GameObject.DestroyImmediate(generator);
-                    }
-                }
-                EditorGUI.EndDisabledGroup();
-            }
-        }
-
-        private static readonly GUIContent _labelSingleton = new GUIContent();
-
-        private static GUIContent Label(string text)
-        {
-            var label = _labelSingleton;
-            label.text = text;
-            return label;
         }
     }
 }

@@ -6,12 +6,12 @@ using UnityEngine;
 namespace gomoru.su.LightController
 {
     [InitializeOnLoad]
-    internal static class PrefabGenerator
+    internal static class AssetGenerator
     {
         private const string EditorPrefsKey = "gomoru.su.LightController.generatedPrefabGUID";
         private const string PrefabPath = "Assets/LightController/LightController.prefab";
 
-        static PrefabGenerator()
+        static AssetGenerator()
         {
             EditorApplication.delayCall += () =>
             {
@@ -32,6 +32,12 @@ namespace gomoru.su.LightController
                     EditorPrefs.SetString(EditorPrefsKey, AssetDatabase.AssetPathToGUID(PrefabPath));
                 }
             };
+        }
+
+        internal static bool TryGetPrefabAsset(out GameObject prefabAsset)
+        {
+            prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(EditorPrefs.GetString(EditorPrefsKey, null)));
+            return prefabAsset != null;
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using UnityEngine;
 
 namespace gomoru.su.LightController
 {
@@ -38,12 +39,14 @@ namespace gomoru.su.LightController
     }
 
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
-    public sealed class GroupAttribute : Attribute
+    public sealed class GroupAttribute : PropertyAttribute
     {
         public string Group { get; set; }
+
         public GroupAttribute(string group)
         {
             Group = group;
+            order = int.MinValue;
         }
     }
 

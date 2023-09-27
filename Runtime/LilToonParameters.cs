@@ -15,7 +15,7 @@ namespace gomoru.su.LightController
         [HideInInspector, SerializeField, InternalProperty]
         [Toggle, Name(MenuName = "Enable")]
         [GroupMaster, Group(GroupName_Lighting)]
-        public bool UseLighting = false;
+        public bool UseLighting = true;
 
         [Header("Lighting")]
         [SerializeField, Range(0f, 1f)]

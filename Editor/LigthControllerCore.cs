@@ -119,10 +119,6 @@ namespace gomoru.su.LightController
             {
                 var path = renderer.AvatarRootPath();
                 var type = renderer.GetType();
-                if (controller.UseMaterialPropertyAsDefault)
-                {
-                    @params.SetParametersFromMaterial(material);
-                }
 
                 foreach(var control in controls)
                 {

@@ -36,9 +36,6 @@ namespace gomoru.su.LightController
         public bool AddResetButton = false;
 
         [SerializeField]
-        public bool UseMaterialPropertyAsDefault = false;
-
-        [SerializeField]
         public LilToonParameters DefaultParameters = new LilToonParameters();
 
         private void OnEnable() { }

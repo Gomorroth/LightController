@@ -1,4 +1,5 @@
 ﻿using UnityEditor;
+using UnityEngine;
 
 namespace gomoru.su.LightController
 {
@@ -13,9 +14,10 @@ namespace gomoru.su.LightController
         private SerializedProperty AddBacklightControl;
         private SerializedProperty AddDistanceFadeControl;
         private SerializedProperty DistanceFadeEndMax;
-        private SerializedProperty UseMaterialPropertyAsDefault;
         private SerializedProperty DefaultParameters;
         private SerializedProperty AddResetButton;
+
+        private static Material _referenceMaterial;
 
         private void OnEnable()
         {
@@ -27,7 +29,6 @@ namespace gomoru.su.LightController
             AddDistanceFadeControl = serializedObject.FindProperty(nameof(LightController.AddDistanceFadeControl));
             DistanceFadeEndMax = serializedObject.FindProperty(nameof(LightController.DistanceFadeEndMax));
             AddResetButton = serializedObject.FindProperty(nameof(LightController.AddResetButton));
-            UseMaterialPropertyAsDefault = serializedObject.FindProperty(nameof(LightController.UseMaterialPropertyAsDefault));
             DefaultParameters = serializedObject.FindProperty(nameof(LightController.DefaultParameters));
         }
 
@@ -52,13 +53,27 @@ namespace gomoru.su.LightController
             EditorGUILayout.PropertyField(DistanceFadeEndMax);
             EditorGUI.indentLevel--;
             EditorGUI.EndDisabledGroup();
-            EditorGUILayout.PropertyField(UseMaterialPropertyAsDefault);
             EditorGUILayout.PropertyField(AddResetButton);
 
             EditorGUILayout.Separator();
-            EditorGUI.BeginDisabledGroup(UseMaterialPropertyAsDefault.boolValue);
             EditorGUILayout.PropertyField(DefaultParameters);
-            EditorGUI.EndDisabledGroup();
+            if (DefaultParameters.isExpanded)
+            {
+                EditorGUILayout.Separator();
+                EditorGUILayout.BeginHorizontal();
+                _referenceMaterial = EditorGUILayout.ObjectField(GUIContent.none, _referenceMaterial, typeof(Material), true) as Material;
+                EditorGUI.BeginDisabledGroup(_referenceMaterial == null);
+                if (GUILayout.Button("Load"))
+                {
+                    foreach(var target in targets)
+                    {
+                        Utils.SetParametersFromMaterial((target as LightController).DefaultParameters, _referenceMaterial);
+                        EditorUtility.SetDirty(target);
+                    }
+                }
+                EditorGUI.EndDisabledGroup();
+                EditorGUILayout.EndHorizontal();
+            }
 
             EditorGUILayout.Separator();
 

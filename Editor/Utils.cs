@@ -160,17 +160,28 @@ namespace gomoru.su.LightController
 
                     var fields = typeof(LilToonParameters).GetFields().Where(x => !x.IsLiteral && x.GetCustomAttribute<InternalPropertyAttribute>() == null).Select(x => (Field: x, Proxy: x.GetCustomAttribute<VectorProxyAttribute>()));
 
-                    var methodArgs = new Type[] { typeof(string) };
+                    var methodArgs = new Type[] { typeof(int) };
                     var getFloat = typeof(Material).GetMethod(nameof(Material.GetFloat), methodArgs);
                     var getInt = typeof(Material).GetMethod(nameof(Material.GetInt), methodArgs);
                     var getVector = typeof(Material).GetMethod(nameof(Material.GetVector), methodArgs);
                     var getColor = typeof(Material).GetMethod(nameof(Material.GetColor), methodArgs);
+                    var hasProperty = typeof(Material).GetMethod(nameof(Material.HasProperty), methodArgs);
 
                     foreach (var (field, _) in fields.Where(x => x.Proxy == null))
                     {
+                        var passThrough = il.DefineLabel();
+                        var id = Shader.PropertyToID($"_{field.Name}");
+                        var loadIDOp = id >= sbyte.MinValue && id <= sbyte.MaxValue ? OpCodes.Ldc_I4_S : OpCodes.Ldc_I4;
+
+                        // Check property exists
+                        il.Emit(OpCodes.Ldarg_1);
+                        il.Emit(loadIDOp, id);
+                        il.Emit(OpCodes.Callvirt, hasProperty);
+                        il.Emit(OpCodes.Brfalse_S, passThrough);
+
                         il.Emit(OpCodes.Ldarg_0);
                         il.Emit(OpCodes.Ldarg_1);
-                        il.Emit(OpCodes.Ldstr, $"_{field.Name}");
+                        il.Emit(loadIDOp, id);
                         if (field.FieldType == typeof(float))
                         {
                             il.Emit(OpCodes.Callvirt, getFloat);
@@ -190,6 +201,8 @@ namespace gomoru.su.LightController
                             il.Emit(OpCodes.Callvirt, getVector);
                         }
                         il.Emit(OpCodes.Stfld, field);
+
+                        il.MarkLabel(passThrough);
                     }
 
                     foreach (var (field, _) in fields.Where(x => x.Proxy != null))
@@ -236,7 +249,11 @@ namespace gomoru.su.LightController
                 catch (Exception e) { Debug.LogError(e); }
             }
 
-            _internalSetParametersFromMaterial?.Invoke(parameters, material);
+            try
+            {
+                _internalSetParametersFromMaterial?.Invoke(parameters, material);
+            }
+            catch { }
         }
     }
 }

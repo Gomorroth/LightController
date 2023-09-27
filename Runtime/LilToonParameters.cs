@@ -45,7 +45,7 @@ namespace gomoru.su.LightController
         public float VertexLightStrength = 0f;
 
 
-        [SerializeField, Header("Backlight")]
+        [SerializeField, InternalProperty, Header("Backlight")]
         [Toggle, Name(MenuName = "Enable")]
         [GroupMaster, Group(GroupName_Backlight)]
         public bool UseBacklight = false;

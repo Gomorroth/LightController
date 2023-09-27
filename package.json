@@ -6,6 +6,7 @@
   "url" : "https://github.com/Gomorroth/LightController",
   "vpmDependencies" : {
     "com.vrchat.avatars" : "^3.2.1",
-    "nadena.dev.modular-avatar" : "^1.6.0"
+    "nadena.dev.modular-avatar" : "^1.6.0",
+    "nadena.dev.ndmf" : "^1.0.2"
   }
 }

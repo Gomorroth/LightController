@@ -12,29 +12,6 @@ namespace gomoru.su.LightController
 {
     internal static class Utils
     {
-        private static MethodInfo _GetGeneratedAssetsFolder = typeof(nadena.dev.modular_avatar.core.editor.AvatarProcessor).Assembly.GetTypes().FirstOrDefault(x => x.Name == "Util")?.GetMethod(nameof(GetGeneratedAssetsFolder), BindingFlags.Static | BindingFlags.NonPublic);
-
-        public static string GetGeneratedAssetsFolder()
-        {
-            var method = _GetGeneratedAssetsFolder;
-            if (method != null)
-                return method.Invoke(null, null) as string;
-
-            var path = "Assets/_LightControllerTemporaryAssets";
-            if (!AssetDatabase.IsValidFolder(path))
-                path = AssetDatabase.GUIDToAssetPath(AssetDatabase.CreateFolder("Assets/", "_LightControllerTemporaryAssets"));
-
-            return path;
-        }
-
-        public static AnimatorController CreateTemporaryAsset()
-        {
-            var fx = new AnimatorController() { name = GUID.Generate().ToString() };
-            AssetDatabase.CreateAsset(fx, System.IO.Path.Combine(Utils.GetGeneratedAssetsFolder(), $"{fx.name}.controller"));
-            AssetDatabase.SaveAssets();
-            return fx;
-        }
-
         public static T GetOrAddComponent<T>(this GameObject obj, Action<T> action = null) where T : Component
         {
             var component = obj.GetComponent<T>();
@@ -55,31 +32,6 @@ namespace gomoru.su.LightController
             obj.hideFlags |= HideFlags.HideInHierarchy;
             return obj;
         }
-
-        public static string GetRelativePath(this Transform transform, Transform root, bool includeRelativeTo = false)
-        {
-            var buffer = _relativePathBuffer;
-            if (buffer is null)
-            {
-                buffer = _relativePathBuffer = new string[128];
-            }
-
-            var t = transform;
-            int idx = buffer.Length;
-            while (t != null && t != root)
-            {
-                buffer[--idx] = t.name;
-                t = t.parent;
-            }
-            if (includeRelativeTo && t != null && t == root)
-            {
-                buffer[--idx] = t.name;
-            }
-
-            return string.Join("/", buffer, idx, buffer.Length - idx);
-        }
-
-        private static string[] _relativePathBuffer;
 
         public static IEnumerable<string> EnumeratePropertyNames(this Shader shader) => Enumerable.Range(0, shader.GetPropertyCount()).Select(shader.GetPropertyName);
 

@@ -1,8 +1,4 @@
-﻿using System;
-using UnityEditor;
-using UnityEditor.Animations;
-using UnityEngine;
-using VRC.SDK3.Avatars.Components;
+﻿using UnityEditor;
 
 namespace gomoru.su.LightController
 {

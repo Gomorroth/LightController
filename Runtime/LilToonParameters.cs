@@ -12,12 +12,11 @@ namespace gomoru.su.LightController
         public const string GroupName_Backlight = "Backlight";
         public const string GroupName_DistanceFade = "DistanceFade";
 
-        [HideInInspector, SerializeField, InternalProperty]
+        [SerializeField, InternalProperty, Header("Lighting")]
         [Toggle, Name(MenuName = "Enable")]
         [GroupMaster, Group(GroupName_Lighting)]
         public bool UseLighting = true;
 
-        [Header("Lighting")]
         [SerializeField, Range(0f, 1f)]
         [Name(MenuName = "Min")]
         [Group(GroupName_Lighting)]
@@ -88,7 +87,7 @@ namespace gomoru.su.LightController
         public float BacklightViewStrength = 1;
 
 
-        [HideInInspector, SerializeField, InternalProperty]
+        [SerializeField, InternalProperty, Header("Distance Fade")]
         [Toggle, Name(MenuName = "Enable")]
         [GroupMaster, Group(GroupName_DistanceFade)]
         public bool UseDistanceFade = false;
@@ -97,7 +96,6 @@ namespace gomoru.su.LightController
         [Group(GroupName_DistanceFade)]
         public Vector4 DistanceFade = new Vector4(0.1f, 0.01f, 0, 0);
 
-        [Header("Distance Fade")]
         [SerializeField, Range(0, 1)]
         [VectorProxy(nameof(DistanceFade), 0)]
         [Group(GroupName_DistanceFade)]

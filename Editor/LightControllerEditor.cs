@@ -7,7 +7,7 @@ using VRC.SDK3.Avatars.Components;
 namespace gomoru.su.LightController
 {
     [CustomEditor(typeof(LightController))]
-    public sealed class LightControllerGeneratorEditor : Editor
+    public sealed class LightControllerEditor : Editor
     {
         private SerializedProperty SaveParameters;
         private SerializedProperty SyncSettings;
@@ -85,7 +85,7 @@ namespace gomoru.su.LightController
                         var fx = new AnimatorController();
                         AssetDatabase.CreateAsset(fx, path);
                         generator.FX = fx;
-                        LightControllerGenerator.Generate(avatar.gameObject, generator);
+                        LightControllerCore.Generate(avatar.gameObject, generator);
                         AssetDatabase.SaveAssets();
                         GameObject.DestroyImmediate(generator);
                     }

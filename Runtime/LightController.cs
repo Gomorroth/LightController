@@ -50,13 +50,5 @@ namespace gomoru.su.LightController
 #endif
 
         private void OnEnable() { }
-
-        private void Awake()
-        {
-            if (enabled)
-                RuntimeHelper.OnAwake?.Invoke(this);
-            else
-                Destroy(this);
-        }
     }
 }

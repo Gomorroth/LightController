@@ -12,12 +12,12 @@ using VRC.SDK3.Avatars.ScriptableObjects;
 
 namespace gomoru.su.LightController
 {
-    public static class LightControllerGenerator
+    public static class LightControllerCore
     {
         private const string PropertyNamePrefix = "material._";
         private const string ParameterNamePrefix = "LightController";
 
-        static LightControllerGenerator()
+        static LightControllerCore()
         {
              _limitters = typeof(LightController).GetFields().Where(x => x.GetCustomAttribute<LimitParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<LimitParameterAttribute>().Name);
              _conditions = typeof(LightController).GetFields().Where(x => x.GetCustomAttribute<ConditionParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<ConditionParameterAttribute>().Name);
@@ -197,7 +197,6 @@ namespace gomoru.su.LightController
                 }
 
                 stateMachine.AddState(idle, stateMachine.entryPosition + new Vector3(0, 200));
-                stateMachine.defaultState = idle;
 
                 for (int i = 0; i < states.Length; i++)
                 {
@@ -288,7 +287,7 @@ namespace gomoru.su.LightController
                     p.remapTo = $"{ParameterNamePrefix}{p.nameOrPrefix}";
                     if (x.Group == null || (syncSettings.TryGetValue(x.Group, out var flag) && !flag))
                     {
-                        p.localOnly = true;
+                        p.syncType = ParameterSyncType.NotSynced;
                     }
                     return p;
                 }));

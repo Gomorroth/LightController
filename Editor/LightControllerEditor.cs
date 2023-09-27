@@ -7,6 +7,7 @@ using VRC.SDK3.Avatars.Components;
 namespace gomoru.su.LightController
 {
     [CustomEditor(typeof(LightController))]
+    [CanEditMultipleObjects]
     public sealed class LightControllerEditor : Editor
     {
         private SerializedProperty SaveParameters;
@@ -19,8 +20,6 @@ namespace gomoru.su.LightController
         private SerializedProperty UseMaterialPropertyAsDefault;
         private SerializedProperty DefaultParameters;
         private SerializedProperty AddResetButton;
-
-        private bool _debugFoldoutOpen;
 
         private void OnEnable()
         {
@@ -71,36 +70,6 @@ namespace gomoru.su.LightController
             {
                 serializedObject.ApplyModifiedProperties();
             }
-
-            if (_debugFoldoutOpen = EditorGUILayout.Foldout(_debugFoldoutOpen, Label("Debug")))
-            {
-                var generator = target as LightController;
-                var avatar = generator?.GetComponentInParent<VRCAvatarDescriptor>();
-                EditorGUI.BeginDisabledGroup(generator == null || avatar == null);
-                if (GUILayout.Button("Generate Manually"))
-                {
-                    var path = EditorUtility.SaveFilePanelInProject("Save", $"LightControllerGeneratedArtifacts_{avatar.name}_{DateTime.Now:yyyyMMddHHmmss.fff}", "controller", "");
-                    if (!string.IsNullOrEmpty(path))
-                    {
-                        var fx = new AnimatorController();
-                        AssetDatabase.CreateAsset(fx, path);
-                        generator.FX = fx;
-                        LightControllerCore.Generate(avatar.gameObject, generator);
-                        AssetDatabase.SaveAssets();
-                        GameObject.DestroyImmediate(generator);
-                    }
-                }
-                EditorGUI.EndDisabledGroup();
-            }
-        }
-
-        private static readonly GUIContent _labelSingleton = new GUIContent();
-
-        private static GUIContent Label(string text)
-        {
-            var label = _labelSingleton;
-            label.text = text;
-            return label;
         }
     }
 }

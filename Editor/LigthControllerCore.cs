@@ -1,5 +1,6 @@
 ﻿using nadena.dev.modular_avatar.core;
 using nadena.dev.ndmf;
+using nadena.dev.ndmf.util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,13 +12,12 @@ using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
+[assembly: ExportsPlugin(typeof(gomoru.su.LightController.LightControllerCore))]
+
 namespace gomoru.su.LightController
 {
     public sealed class LightControllerCore : Plugin<LightControllerCore>
     {
-        private const string PropertyNamePrefix = "material._";
-        private const string ParameterNamePrefix = "LightController";
-
         static LightControllerCore()
         {
              _limitters = typeof(LightController).GetFields().Where(x => x.GetCustomAttribute<LimitParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<LimitParameterAttribute>().Name);
@@ -76,15 +76,16 @@ namespace gomoru.su.LightController
         private static Dictionary<string, FieldInfo> _limitters;
         private static Dictionary<string, FieldInfo> _conditions;
 
-        public static void Generate(GameObject avatarObject, LightController generator)
-        {
-            var fx = generator.FX;
-            var go = generator.gameObject;
-            if (fx == null)
-                fx = Utils.CreateTemporaryAsset();
+        private const string PropertyNamePrefix = "material._";
+        private const string ParameterNamePrefix = "LightController";
 
-            var targets = avatarObject.GetComponentsInChildren<Renderer>(true)
-                .Where(x => (x is MeshRenderer || x is SkinnedMeshRenderer) && x.tag != "EditorOnly")
+        public static void Generate(BuildContext context, LightController controller)
+        {
+            var fx = new AnimatorController() { name = "LightController" }.AddTo(context.AssetContainer);
+            var go = controller.gameObject;
+
+            var targets = context.AvatarRootObject.GetComponentsInChildren<Renderer>(true)
+                .Where(x => (x is MeshRenderer || x is SkinnedMeshRenderer) && !x.CompareTag("EditorOnly"))
                 .Select(x =>
                     (Renderer: x,
                      Material: x.sharedMaterials
@@ -97,11 +98,11 @@ namespace gomoru.su.LightController
 
             List<ParameterControl.Parameter> parameters = new List<ParameterControl.Parameter>();
             
-            var controls = Controls.Where(x => x.Condition(generator)).ToArray();
+            var controls = Controls.Where(x => x.Condition(controller)).ToArray();
 
             if (!controls.Any())
             {
-                var installer = generator.GetComponent<ModularAvatarMenuInstaller>();
+                var installer = controller.GetComponent<ModularAvatarMenuInstaller>();
                 if (installer != null)
                     installer.enabled = false;
                 return;
@@ -113,20 +114,20 @@ namespace gomoru.su.LightController
                 control.Control = fx.CreateAnim(control.Name);
             }
 
-            var @params = generator.DefaultParameters;
+            var @params = controller.DefaultParameters;
 
             foreach (var (renderer, material) in targets)
             {
-                var path = renderer.transform.GetRelativePath(avatarObject.transform);
+                var path = renderer.AvatarRootPath();
                 var type = renderer.GetType();
-                if (generator.UseMaterialPropertyAsDefault)
+                if (controller.UseMaterialPropertyAsDefault)
                 {
                     @params.SetParametersFromMaterial(material);
                 }
 
                 foreach(var control in controls)
                 {
-                    control.SetAnimationCurves((path, type, control.Default, control.Control, material, generator, @params));
+                    control.SetAnimationCurves((path, type, control.Default, control.Control, material, controller, @params));
                 }
             }
 
@@ -136,7 +137,7 @@ namespace gomoru.su.LightController
                 {
                     name = control.Name,
                     defaultWeight = 1,
-                    stateMachine = new AnimatorStateMachine() { name = control.Name }.HideInHierarchy().AddTo(fx),
+                    stateMachine = new AnimatorStateMachine() { name = control.Name }.HideInHierarchy().AddTo(context.AssetContainer),
                 };
 
                 var stateMachine = layer.stateMachine;
@@ -157,23 +158,23 @@ namespace gomoru.su.LightController
 
                 fx.AddLayer(layer);
 
-                control.Parameters((control.Name, generator, @params, parameters));
+                control.Parameters((control.Name, controller, @params, parameters));
             }
 
             var groups = controls.Select(y => y.Group).Where(y => y != null).Distinct();
             int groupCount = groups.Count();
 
-            if (generator.AddResetButton)
+            if (controller.AddResetButton)
             {
                 var layer = new AnimatorControllerLayer()
                 {
                     name = "Reset",
                     defaultWeight = 1,
-                    stateMachine = new AnimatorStateMachine() { name = "Reset" }.HideInHierarchy().AddTo(fx),
+                    stateMachine = new AnimatorStateMachine() { name = "Reset" }.HideInHierarchy().AddTo(context.AssetContainer),
                 };
                 var stateMachine = layer.stateMachine;
 
-                var blank = new AnimationClip() { name = "Blank" }.HideInHierarchy().AddTo(fx);
+                var blank = new AnimationClip() { name = "Blank" }.HideInHierarchy().AddTo(context.AssetContainer);
 
                 var idle = stateMachine.CreateState("Idle", blank);
                 var states = new AnimatorState[groupCount];
@@ -233,7 +234,7 @@ namespace gomoru.su.LightController
 
             go.GetOrAddComponent<ModularAvatarMenuInstaller>(x =>
             {
-                var mainMenu = CreateExpressionMenu("Main Menu").AddTo(fx);
+                var mainMenu = CreateExpressionMenu("Main Menu").AddTo(context.AssetContainer);
              
                 Dictionary<string, VRCExpressionsMenu> categories = new Dictionary<string, VRCExpressionsMenu>();
 
@@ -244,7 +245,7 @@ namespace gomoru.su.LightController
                     {
                         if (!categories.TryGetValue(control.Group, out menu))
                         {
-                            menu = CreateExpressionMenu($"{control.Group} Menu").AddTo(fx);
+                            menu = CreateExpressionMenu($"{control.Group} Menu").AddTo(context.AssetContainer);
                             mainMenu.controls.Add(new VRCExpressionsMenu.Control() { name = control.Group, type = VRCExpressionsMenu.Control.ControlType.SubMenu, subMenu = menu });
                             categories.Add(control.Group, menu);
                         }
@@ -258,9 +259,9 @@ namespace gomoru.su.LightController
                     name = "Light Controller",
                     type = VRCExpressionsMenu.Control.ControlType.SubMenu,
                     subMenu = mainMenu,
-                }).AddTo(fx);
+                }).AddTo(context.AssetContainer);
 
-                if (generator.AddResetButton)
+                if (controller.AddResetButton)
                 {
                     foreach(var (category, i) in categories.Select((a, i) => (a, i)))
                     {
@@ -279,12 +280,12 @@ namespace gomoru.su.LightController
 
             go.GetOrAddComponent<ModularAvatarParameters>(component =>
             {
-                var syncSettings = typeof(ParameterSyncSettings).GetFields().ToDictionary(x => x.Name, x => (bool)x.GetValue(generator.SyncSettings));
+                var syncSettings = typeof(ParameterSyncSettings).GetFields().ToDictionary(x => x.Name, x => (bool)x.GetValue(controller.SyncSettings));
                 component.parameters.Clear();
                 component.parameters.AddRange(parameters.Select(x =>
                 {
                     var p = x.ToParameterConfig();
-                    p.saved = generator.SaveParameters;
+                    p.saved = controller.SaveParameters;
                     p.remapTo = $"{ParameterNamePrefix}{p.nameOrPrefix}";
                     if (x.Group == null || (syncSettings.TryGetValue(x.Group, out var flag) && !flag))
                     {
@@ -422,10 +423,31 @@ namespace gomoru.su.LightController
             };
         }
 
+        public override string DisplayName => "Light Controller";
+        public override string QualifiedName => "gomoru.su.light-controller";
+
+        private const string ModularAvatarQualifiedName = "nadena.dev.modular-avatar";
+
         protected override void Configure()
         {
-            throw new NotImplementedException();
+            InPhase(BuildPhase.Transforming)
+            .BeforePlugin(ModularAvatarQualifiedName)
+            .Run(new GeneratePass());
         }
 
+        private sealed class GeneratePass : Pass<GeneratePass>
+        {
+            public override string DisplayName => "Light Controller";
+
+            protected override void Execute(BuildContext context)
+            {
+                var controller = context.AvatarRootObject.GetComponentInChildren<LightController>();
+                if (controller != null)
+                {
+                    Generate(context, controller);
+                    GameObject.DestroyImmediate(controller);
+                }
+            }
+        }
     }
 }

@@ -4,7 +4,6 @@ using VRC.SDKBase;
 namespace gomoru.su.LightController
 {
     [DisallowMultipleComponent]
-    [DefaultExecutionOrder(-10000)]
     public sealed class LightController : MonoBehaviour, IEditorOnly
     {
         [SerializeField, Range(1f, 10f)]
@@ -41,13 +40,6 @@ namespace gomoru.su.LightController
 
         [SerializeField]
         public LilToonParameters DefaultParameters = new LilToonParameters();
-
-#if UNITY_EDITOR
-
-        [HideInInspector]
-        public UnityEditor.Animations.AnimatorController FX;
-
-#endif
 
         private void OnEnable() { }
     }

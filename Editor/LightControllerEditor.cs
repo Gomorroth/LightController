@@ -16,6 +16,7 @@ namespace gomoru.su.LightController
         private SerializedProperty DistanceFadeEndMax;
         private SerializedProperty DefaultParameters;
         private SerializedProperty AddResetButton;
+        private SerializedProperty Excludes;
 
         private static Material _referenceMaterial;
 
@@ -30,6 +31,7 @@ namespace gomoru.su.LightController
             DistanceFadeEndMax = serializedObject.FindProperty(nameof(LightController.DistanceFadeEndMax));
             AddResetButton = serializedObject.FindProperty(nameof(LightController.AddResetButton));
             DefaultParameters = serializedObject.FindProperty(nameof(LightController.DefaultParameters));
+            Excludes = serializedObject.FindProperty(nameof(LightController.Excludes));
         }
 
         public override void OnInspectorGUI ()
@@ -74,6 +76,9 @@ namespace gomoru.su.LightController
                 EditorGUI.EndDisabledGroup();
                 EditorGUILayout.EndHorizontal();
             }
+
+            EditorGUILayout.Separator();
+            EditorGUILayout.PropertyField(Excludes);
 
             EditorGUILayout.Separator();
 

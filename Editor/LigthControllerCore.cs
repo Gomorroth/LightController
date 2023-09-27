@@ -83,7 +83,7 @@ namespace gomoru.su.LightController
             var go = controller.gameObject;
 
             var targets = context.AvatarRootObject.GetComponentsInChildren<Renderer>(true)
-                .Where(x => (x is MeshRenderer || x is SkinnedMeshRenderer) && !x.CompareTag("EditorOnly"))
+                .Where(x => (x is MeshRenderer || x is SkinnedMeshRenderer) && !x.CompareTag("EditorOnly") && !controller.Excludes.Contains(x.gameObject))
                 .Select(x =>
                     (Renderer: x,
                      Material: x.sharedMaterials

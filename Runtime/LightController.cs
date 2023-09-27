@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 using VRC.SDKBase;
 
 namespace gomoru.su.LightController
@@ -37,6 +38,9 @@ namespace gomoru.su.LightController
 
         [SerializeField]
         public LilToonParameters DefaultParameters = new LilToonParameters();
+
+        [SerializeField]
+        public List<GameObject> Excludes = new List<GameObject>();
 
         private void OnEnable() { }
     }

@@ -11,11 +11,10 @@ using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
 
-[assembly: ExportsPlugin(typeof(gomoru.su.LightController.LightControllerCore))]
 
 namespace gomoru.su.LightController
 {
-    public sealed class LightControllerCore : Plugin<LightControllerCore>
+    internal sealed partial class LightControllerCore
     {
         static LightControllerCore()
         {
@@ -78,7 +77,7 @@ namespace gomoru.su.LightController
         private const string PropertyNamePrefix = "material._";
         private const string ParameterNamePrefix = "LightController";
 
-        public static void Generate(BuildContext context, LightController controller)
+        private static void Generate(BuildContext context, LightController controller)
         {
             var fx = new AnimatorController() { name = "LightController" }.AddTo(context.AssetContainer);
             var go = controller.gameObject;
@@ -418,31 +417,5 @@ namespace gomoru.su.LightController
             };
         }
 
-        public override string DisplayName => "Light Controller";
-        public override string QualifiedName => "gomoru.su.light-controller";
-
-        private const string ModularAvatarQualifiedName = "nadena.dev.modular-avatar";
-
-        protected override void Configure()
-        {
-            InPhase(BuildPhase.Transforming)
-            .BeforePlugin(ModularAvatarQualifiedName)
-            .Run(new GeneratePass());
-        }
-
-        private sealed class GeneratePass : Pass<GeneratePass>
-        {
-            public override string DisplayName => "Light Controller";
-
-            protected override void Execute(BuildContext context)
-            {
-                var controller = context.AvatarRootObject.GetComponentInChildren<LightController>();
-                if (controller != null)
-                {
-                    Generate(context, controller);
-                    GameObject.DestroyImmediate(controller);
-                }
-            }
-        }
     }
 }

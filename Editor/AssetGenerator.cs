@@ -33,5 +33,11 @@ namespace gomoru.su.LightController
                 }
             };
         }
+
+        internal static bool TryGetPrefabAsset(out GameObject prefabAsset)
+        {
+            prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(EditorPrefs.GetString(EditorPrefsKey, null)));
+            return prefabAsset != null;
+        }
     }
 }

@@ -260,7 +260,6 @@ namespace gomoru.su.LightController
                     foreach(var (category, i) in categories.Select((a, i) => (a, i)))
                     {
                         var menu = category.Value;
-                        Debug.Log($"{category} {i}");
                         menu.controls.Insert(1, new VRCExpressionsMenu.Control()
                         {
                             name = "Reset",
@@ -283,7 +282,7 @@ namespace gomoru.su.LightController
                     p.remapTo = $"{ParameterNamePrefix}{p.nameOrPrefix}";
                     if (x.Group == null || (syncSettings.TryGetValue(x.Group, out var flag) && !flag))
                     {
-                        p.syncType = ParameterSyncType.NotSynced;
+                        p.localOnly = true;
                     }
                     return p;
                 }));

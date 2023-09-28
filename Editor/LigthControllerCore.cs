@@ -283,7 +283,7 @@ namespace gomoru.su.LightController
                     p.remapTo = $"{ParameterNamePrefix}{p.nameOrPrefix}";
                     if (x.Group == null || (syncSettings.TryGetValue(x.Group, out var flag) && !flag))
                     {
-                        p.syncType = ParameterSyncType.NotSynced;
+                        p.localOnly = true;
                     }
                     return p;
                 }));

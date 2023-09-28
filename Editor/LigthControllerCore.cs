@@ -260,7 +260,6 @@ namespace gomoru.su.LightController
                     foreach(var (category, i) in categories.Select((a, i) => (a, i)))
                     {
                         var menu = category.Value;
-                        Debug.Log($"{category} {i}");
                         menu.controls.Insert(1, new VRCExpressionsMenu.Control()
                         {
                             name = "Reset",

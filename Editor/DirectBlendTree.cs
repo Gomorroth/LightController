@@ -7,21 +7,30 @@ using UnityEditor;
 
 namespace gomoru.su
 {
-    public interface IDirectBlendTreeItem
+    public abstract class DirectBlendTreeItem
     {
-        void Apply(BlendTree destination);
-        void AddParameterToController(AnimatorController);
+        public abstract void Apply(BlendTree destination);
+        public abstract void AddParameterToController(AnimatorController destination);
+
+        protected static bool TryAddParameter(AnimatorController controller, string name, float value)
+        {
+            if (controller.parameters.Any(p => p.name == name))
+                return false;
+
+            controller.AddParameter(new AnimatorControllerParameter() { defaultFloat = value });
+            return true;
+        }
     }
 
-    public sealed partial class DirectBlendTree : IDirectBlendTreeItem
+    public sealed partial class DirectBlendTree : DirectBlendTreeItem
     {
         private readonly string DirectBlendParameterName;
-        private List<IDirectBlendTreeItem> _items;
+        private List<DirectBlendTreeItem> _items;
         private Object _assetContainer;
 
         public DirectBlendTree(Object assetContainer, string directBlendParameterName = "1")
         {
-            _items = new List<IDirectBlendTreeItem>();
+            _items = new List<DirectBlendTreeItem>();
             _assetContainer = assetContainer;
             DirectBlendParameterName = directBlendParameterName;
         }
@@ -66,10 +75,20 @@ namespace gomoru.su
             return layer;
         }
 
-        public void Apply(BlendTree destination)
+        public override void Apply(BlendTree destination)
         {
             var blendTree = ToBlendTree();
             destination.AddChild(blendTree);
+        }
+
+        public override void AddParameterToController(AnimatorController destination)
+        {
+            foreach (var item in _items)
+            {
+                item.AddParameterToController(destination);
+            }
+
+            TryAddParameter(destination, DirectBlendParameterName, 1);
         }
 
         private static void SetNormalizedBlendValues(BlendTree blendTree, bool value)
@@ -84,7 +103,7 @@ namespace gomoru.su
 
     partial class DirectBlendTree
     {
-        public abstract class ControlBase : IDirectBlendTreeItem
+        public abstract class ControlBase : DirectBlendTreeItem
         {
             private static readonly ObjectReferenceKeyframe[] _singleKeyFrame = new ObjectReferenceKeyframe[1];
 
@@ -98,7 +117,7 @@ namespace gomoru.su
 
             public abstract IEnumerable<(AnimationClip Motion, float Weight)> GetMotions();
 
-            public void Apply(BlendTree destination)
+            public override void Apply(BlendTree destination)
             {
                 var blendTree = new BlendTree();
                 foreach (var (motion, weight) in GetMotions().OrderBy(x => x.Weight))
@@ -109,6 +128,11 @@ namespace gomoru.su
                 blendTree.blendParameter = ParameterName;
 
                 destination.AddChild(blendTree);
+            }
+
+            public override void AddParameterToController(AnimatorController destination)
+            {
+                TryAddParameter(destination, ParameterName, 0);
             }
 
             protected void SeparateAnimationClips(AnimationClip clip, Dictionary<float, AnimationClip> destination)

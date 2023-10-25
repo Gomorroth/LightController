@@ -108,7 +108,8 @@ namespace gomoru.su.LightController
                 return;
             }
 
-            var directBlendTree = new DirectBlendTree(container);
+            var directBlendTree = new DirectBlendTree(container) { Name = "Light Controller" };
+            fx.AddParameter(DirectBlendTree.DefaultDirectBlendTreeParameter);
 
             foreach (var control in controls)
             {
@@ -166,7 +167,7 @@ namespace gomoru.su.LightController
                 control.Parameters((control.Name, controller, @params, parameters));
             }
 
-            directBlendTree.Apply(fx);
+            fx.AddLayer(directBlendTree.ToAnimatorControllerLayer());
 
             var groups = controls.Select(y => y.Group).Where(y => y != null).Distinct();
             int groupCount = groups.Count();
@@ -238,7 +239,7 @@ namespace gomoru.su.LightController
             {
                 x.layerType = VRCAvatarDescriptor.AnimLayerType.FX;
                 x.animator = fx;
-                x.matchAvatarWriteDefaults = true;
+                x.matchAvatarWriteDefaults = false;
                 x.pathMode = MergeAnimatorPathMode.Absolute;
             });
 

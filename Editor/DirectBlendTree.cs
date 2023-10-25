@@ -7,34 +7,23 @@ using UnityEditor;
 
 namespace gomoru.su
 {
-    public abstract class DirectBlendTreeItem
+    public sealed partial class DirectBlendTree : DirectBlendTree.IDirectBlendTreeItem
     {
-        public string Name;
+        public static AnimatorControllerParameter DefaultDirectBlendTreeParameter => new AnimatorControllerParameter() { name  = "1", type = AnimatorControllerParameterType.Float, defaultFloat = 1 };
 
-        public abstract void Apply(BlendTree destination);
-        public abstract void AddParameterToController(AnimatorController destination);
-
-        protected static bool TryAddParameter(AnimatorController controller, string name, float value)
-        {
-            if (controller.parameters.Any(p => p.name == name))
-                return false;
-
-            controller.AddParameter(new AnimatorControllerParameter() { name = name, type = AnimatorControllerParameterType.Float, defaultFloat = value });
-            return true;
-        }
-    }
-
-    public sealed partial class DirectBlendTree : DirectBlendTreeItem
-    {
-        private readonly string DirectBlendParameterName;
-        private List<DirectBlendTreeItem> _items;
+        private List<IDirectBlendTreeItem> _items;
         private Object _assetContainer;
 
-        public DirectBlendTree(Object assetContainer, string directBlendParameterName = "1")
+        public string Name { get; set; }
+        public string ParameterName { get; }
+
+        public AnimatorControllerParameter DirectBlendParameter { get; }
+
+        public DirectBlendTree(Object assetContainer, string parameterName = "1")
         {
-            _items = new List<DirectBlendTreeItem>();
+            _items = new List<IDirectBlendTreeItem>();
             _assetContainer = assetContainer;
-            DirectBlendParameterName = directBlendParameterName;
+            ParameterName = parameterName;
         }
 
         public Toggle AddToggle(string parameterName = null)
@@ -60,7 +49,7 @@ namespace gomoru.su
 
         public DirectBlendTree AddDirectBlendTree()
         {
-            var item = new DirectBlendTree(_assetContainer, DirectBlendParameterName);
+            var item = new DirectBlendTree(_assetContainer, ParameterName);
             _items.Add(item);
             return item;
         }
@@ -80,40 +69,45 @@ namespace gomoru.su
             var children = blendTree.children;
             for(int i = 0; i < children.Length; i++)
             {
-                children[i].directBlendParameter = DirectBlendParameterName;
+                children[i].directBlendParameter = ParameterName;
             }
             blendTree.children = children;
 
             return blendTree;
         }
 
-        public AnimatorControllerLayer Apply(AnimatorController destination)
+        public AnimatorControllerLayer ToAnimatorControllerLayer()
         {
             var layer = new AnimatorControllerLayer();
+            layer.name = Name;
             var stateMachine = layer.stateMachine = new AnimatorStateMachine();
-            AssetDatabase.AddObjectToAsset(stateMachine, destination);
-            destination.AddLayer(layer);
+            AssetDatabase.AddObjectToAsset(stateMachine, _assetContainer);
 
-            var state = stateMachine.AddState("Direct Blend Tree");
+            var state = stateMachine.AddState(Name ?? "Direct Blend Tree");
             state.motion = ToBlendTree();
-
-            AddParameterToController(destination);
 
             return layer;
         }
 
-        public override void Apply(BlendTree destination)
+        public string[] GetParameters()
+        {
+            var list = new List<string>();
+            (this as IDirectBlendTreeItem).GetParameters(list);
+            return list.ToArray();
+        }
+
+        void IDirectBlendTreeItem.Apply(BlendTree destination)
         {
             var blendTree = ToBlendTree();
             destination.AddChild(blendTree);
         }
 
-        public override void AddParameterToController(AnimatorController destination)
+        void IDirectBlendTreeItem.GetParameters(List<string> destination)
         {
-            TryAddParameter(destination, DirectBlendParameterName, 1);
+            destination.Add(ParameterName);
             foreach (var item in _items)
             {
-                item.AddParameterToController(destination);
+                item.GetParameters(destination);
             }
         }
 
@@ -129,8 +123,18 @@ namespace gomoru.su
 
     partial class DirectBlendTree
     {
-        public abstract class ControlBase : DirectBlendTreeItem
+        private interface IDirectBlendTreeItem
         {
+            void Apply(BlendTree destination);
+            void GetParameters(List<string> destination);
+        }
+    }
+
+    partial class DirectBlendTree
+    {
+        public abstract class ControlBase : IDirectBlendTreeItem
+        {
+            public string Name;
             public string ParameterName;
             protected Object AssetContainer;
 
@@ -142,7 +146,7 @@ namespace gomoru.su
 
             public abstract IEnumerable<(Motion Motion, float Weight)> GetMotions();
 
-            public override void Apply(BlendTree destination)
+            void IDirectBlendTreeItem.Apply(BlendTree destination)
             {
                 var blendTree = new BlendTree();
                 blendTree.name = Name;
@@ -156,9 +160,9 @@ namespace gomoru.su
                 destination.AddChild(blendTree);
             }
 
-            public override void AddParameterToController(AnimatorController destination)
+            void IDirectBlendTreeItem.GetParameters(List<string> destination)
             {
-                TryAddParameter(destination, ParameterName, 0);
+                destination.Add(ParameterName);
             }
         }
 

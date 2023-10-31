@@ -29,6 +29,19 @@ namespace gomoru.su.LightController
     }
 
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
+    public sealed class MinMaxAttribute : PropertyAttribute
+    {
+        public MinMaxAttribute(float min, float max)
+        {
+            Min = min;
+            Max = max;
+        }
+
+        public float Min { get; }
+        public float Max { get; }
+    }
+
+    [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
     public sealed class ToggleAttribute : Attribute { }
 
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]

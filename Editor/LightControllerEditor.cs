@@ -1,4 +1,6 @@
-﻿using UnityEditor;
+﻿using System.Linq;
+using System.Reflection;
+using UnityEditor;
 using UnityEngine;
 
 namespace gomoru.su.LightController
@@ -58,6 +60,7 @@ namespace gomoru.su.LightController
             EditorGUILayout.PropertyField(AddResetButton);
 
             EditorGUILayout.Separator();
+
             EditorGUILayout.PropertyField(DefaultParameters);
             if (DefaultParameters.isExpanded)
             {

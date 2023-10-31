@@ -15,34 +15,34 @@ namespace gomoru.su.LightController
         [SerializeField, InternalProperty, Header("Lighting")]
         [Toggle, Name(MenuName = "Enable")]
         [GroupMaster, Group(GroupName_Lighting)]
-        public bool UseLighting = true;
+        public BoolParameter UseLighting = true;
 
-        [SerializeField, Range(0f, 1f)]
+        [SerializeField, MinMax(0f, 1f)]
         [Name(MenuName = "Min")]
         [Group(GroupName_Lighting)]
-        public float LightMinLimit = 0.05f;
+        public FloatParameter LightMinLimit = 0.05f;
 
-        [SerializeField, Range(0f, 10f)]
+        [SerializeField, MinMax(0f, 10f)]
         [Name(MenuName = "Max")]
         [Group(GroupName_Lighting)]
-        public float LightMaxLimit = 1f;
+        public FloatParameter LightMaxLimit = 1f;
 
-        [SerializeField, Range(0f, 1f)]
+        [SerializeField, MinMax(0f, 1f)]
         [Name(MenuName = "Monochrome")]
         [Group(GroupName_Lighting)]
-        public float MonochromeLighting = 0f;
+        public FloatParameter MonochromeLighting = 0f;
 
-        [SerializeField, Range(0f, 1f)]
+        [SerializeField, MinMax(0f, 1f)]
         [Group(GroupName_Lighting)]
-        public float ShadowEnvStrength = 0f;
+        public FloatParameter ShadowEnvStrength = 0f;
 
-        [SerializeField, Range(0f, 1f)]
+        [SerializeField, MinMax(0f, 1f)]
         [Group(GroupName_Lighting)]
-        public float AsUnlit = 0f;
+        public FloatParameter AsUnlit = 0f;
 
-        [SerializeField, Range(0f, 1f)]
+        [SerializeField, MinMax(0f, 1f)]
         [Group(GroupName_Lighting)]
-        public float VertexLightStrength = 0f;
+        public FloatParameter VertexLightStrength = 0f;
 
 
         [SerializeField, InternalProperty, Header("Backlight")]

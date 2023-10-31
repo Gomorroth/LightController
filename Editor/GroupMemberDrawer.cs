@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace gomoru.su.LightController
 {
-    [CustomPropertyDrawer(typeof(GroupAttribute))]
+    //[CustomPropertyDrawer(typeof(GroupAttribute))]
     internal sealed class GroupMemberDrawer : PropertyDrawer
     {
         private static Dictionary<string, string> _displayNameCahce = new Dictionary<string, string>();

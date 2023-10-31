@@ -3,6 +3,7 @@ using nadena.dev.ndmf;
 using nadena.dev.ndmf.util;
 using System;
 using System.Collections.Generic;
+using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -81,6 +82,7 @@ namespace gomoru.su.LightController
         {
             var fx = new AnimatorController() { name = "LightController" }.AddTo(context.AssetContainer);
             var go = controller.gameObject;
+            var container = context.AssetContainer;
 
             var targets = context.AvatarRootObject.GetComponentsInChildren<Renderer>(true)
                 .Where(x => (x is MeshRenderer || x is SkinnedMeshRenderer) && !x.CompareTag("EditorOnly") && !controller.Excludes.Contains(x.gameObject))
@@ -106,10 +108,13 @@ namespace gomoru.su.LightController
                 return;
             }
 
+            var directBlendTree = new DirectBlendTree(container) { Name = "Light Controller" };
+            fx.AddParameter(DirectBlendTree.DefaultDirectBlendTreeParameter);
+
             foreach (var control in controls)
             {
-                control.Default = fx.CreateAnim($"{control.Name} Default");
-                control.Control = fx.CreateAnim(control.Name);
+                control.Default = new AnimationClip() { name = $"{control.Name} Default" };
+                control.Control = new AnimationClip() { name = control.Name };
             }
 
             var @params = controller.DefaultParameters;
@@ -125,35 +130,44 @@ namespace gomoru.su.LightController
                 }
             }
 
+            var separatedClips = new Dictionary<float, AnimationClip>();
+            var blendGrpup = new Dictionary<string, DirectBlendTree>();
+
             foreach (var control in controls)
             {
-                var layer = new AnimatorControllerLayer()
+                separatedClips.Clear();
+                if (!blendGrpup.TryGetValue(control.Group, out var groupTree))
                 {
-                    name = control.Name,
-                    defaultWeight = 1,
-                    stateMachine = new AnimatorStateMachine() { name = control.Name }.HideInHierarchy().AddTo(context.AssetContainer),
-                };
-
-                var stateMachine = layer.stateMachine;
-
-                var idle = stateMachine.CreateState("Idle", control.Default);
-                var state = stateMachine.CreateState(control.Name, control.Control);
-                if (!control.IsMaster)
-                {
-                    state.timeParameter = control.Name;
-                    state.timeParameterActive = true;
+                    groupTree = directBlendTree.AddDirectBlendTree();
+                    groupTree.Name = control.Name;
+                    blendGrpup.Add(control.Group, groupTree);
                 }
 
-                idle.AddTransition(state, new AnimatorCondition() { mode = AnimatorConditionMode.If, parameter = control.Group });
-                state.AddTransition(idle, new AnimatorCondition() { mode = AnimatorConditionMode.IfNot, parameter = control.Group });
+                var toggle = groupTree.AddToggle(control.Group);
+                toggle.OFF = control.Default;
 
-                stateMachine.AddState(idle, stateMachine.entryPosition + new Vector3(150, 0));
-                stateMachine.AddState(state, stateMachine.entryPosition + new Vector3(150, 50));
+                if (!control.IsMaster)
+                {
+                    var blend = new BlendTree() { name = "Control" }.AddTo(container);
+                    DirectBlendTree.MotionSeparatingControlBase.SeparateAnimationClips(control.Control, container, separatedClips);
 
-                fx.AddLayer(layer);
+                    var (first, second) = (separatedClips.First().Value, separatedClips.Last().Value);
+                    first.name = $"{control.Name} Start";
+                    second.name = $"{control.Name} End";
+                    blend.AddChild(first, 0);
+                    blend.AddChild(second, 1);
+                    blend.blendParameter = control.Name;
+                    toggle.ON = blend;
+                }
+                else
+                {
+                    toggle.ON = control.Control;
+                }
 
                 control.Parameters((control.Name, controller, @params, parameters));
             }
+
+            fx.AddLayer(directBlendTree.ToAnimatorControllerLayer());
 
             var groups = controls.Select(y => y.Group).Where(y => y != null).Distinct();
             int groupCount = groups.Count();
@@ -215,6 +229,9 @@ namespace gomoru.su.LightController
 
             foreach (var parameter in parameters)
             {
+                if (fx.parameters.Any(x => x.name == parameter.Name))
+                    continue;
+
                 fx.AddParameter(parameter.ToControllerParameter());
             }
 
@@ -222,7 +239,7 @@ namespace gomoru.su.LightController
             {
                 x.layerType = VRCAvatarDescriptor.AnimLayerType.FX;
                 x.animator = fx;
-                x.matchAvatarWriteDefaults = true;
+                x.matchAvatarWriteDefaults = false;
                 x.pathMode = MergeAnimatorPathMode.Absolute;
             });
 
@@ -327,11 +344,11 @@ namespace gomoru.su.LightController
                         var limit = (float)limitField.GetValue(args.Generator);
                         var value = (float)targetField.GetValue(args.Parameters);
                         value /= limit;
-                        args.List.AddParameter(args.Name, value, group, !isMaster && isToggle);
+                        args.List.AddParameter(args.Name, value, group, true);
                     }
                     else
                     {
-                        args.List.AddParameter(args.Name, targetField.GetValue(args.Parameters), targetField.FieldType, group, !isMaster && isToggle);
+                        args.List.AddParameter(args.Name, targetField.GetValue(args.Parameters), targetField.FieldType, group, true);
                     }
                 };
             }

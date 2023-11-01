@@ -28,7 +28,6 @@ namespace gomoru.su.LightController
                 var controller = context.AvatarRootObject.GetComponentInChildren<LightController>();
                 if (controller != null)
                 {
-                    Generate(context, controller);
                     GameObject.DestroyImmediate(controller);
                 }
             }

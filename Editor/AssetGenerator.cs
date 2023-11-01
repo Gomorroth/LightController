@@ -25,7 +25,6 @@ namespace gomoru.su.LightController
                     }
                     var prefab = new GameObject(Path.GetFileNameWithoutExtension(PrefabPath)) { hideFlags = HideFlags.HideInHierarchy }; 
                     var generator = prefab.AddComponent<LightController>();
-                    generator.SaveParameters = false;
                     prefab.AddComponent<ModularAvatarMenuInstaller>();
                     PrefabUtility.SaveAsPrefabAsset(prefab, PrefabPath);
                     GameObject.DestroyImmediate(prefab);

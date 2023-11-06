@@ -10,6 +10,7 @@ public sealed partial class LilToon : ShaderSettings
     [Range(0, 1)]
     public float DistanceFadeEndMax = 1f;
 
+    public FloatParameter LightMaxLimit222 = 1f;
 
     public LightingGroup Lighting = new LightingGroup();
 }

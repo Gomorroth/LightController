@@ -5,14 +5,15 @@ namespace gomoru.su.LightController.API
     [Serializable]
     public abstract class Parameter
     {
-        public bool IsEnable;
-        public bool IsSync;
-        public bool IsSave;
+        public bool Enable;
+        public bool Sync;
+        public bool Save;
 
         private protected Parameter() { }
     }
 
 
+    [Serializable]
     public class Parameter<T> : Parameter
     {
         public T Value;
@@ -27,6 +28,7 @@ namespace gomoru.su.LightController.API
         public static implicit operator Parameter<T>(T value) => new Parameter<T>(value);
     }
 
+    [Serializable]
     public sealed class FloatParameter : Parameter<float>
     {
         public FloatParameter(float value)
@@ -38,6 +40,7 @@ namespace gomoru.su.LightController.API
     }
 
 
+    [Serializable]
     public sealed class BoolParameter : Parameter<bool>
     {
         public BoolParameter(bool value)

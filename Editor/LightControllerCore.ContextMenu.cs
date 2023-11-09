@@ -8,7 +8,8 @@ namespace gomoru.su.LightController
 {
     partial class LightControllerCore
     {
-        const string MenuPath = "GameObject/ModularAvatar/Light Controller";
+        private const string MenuPath = "GameObject/ModularAvatar/Light Controller";
+        private const string PrefabGUID = "6436c0c7a87bd344cba20929d9db49fe";
 
         [MenuItem(MenuPath, true, 200)]
         public static bool CanAppendPrefabToAvatars() => Selection.gameObjects.Any(ValidateCore);
@@ -17,13 +18,13 @@ namespace gomoru.su.LightController
         public static void AppendPrefabToAvatars()
         {
             List<GameObject> objectToCreated = new List<GameObject>();
-            //AssetGenerator.TryGetPrefabAsset(out var prefab);
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(PrefabGUID));
             foreach (var x in Selection.gameObjects)
             {
                 if (!ValidateCore(x))
                     continue;
 
-                var obj = new GameObject(); // PrefabUtility.InstantiatePrefab(prefab, x.transform) as GameObject;
+                var obj = PrefabUtility.InstantiatePrefab(prefab, x.transform) as GameObject;
 
                 objectToCreated.Add(obj);
             }

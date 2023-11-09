@@ -11,8 +11,6 @@ using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 using VRC.SDKBase;
-using static gomoru.su.LightController.API.Editor.ReflectionCache;
-
 
 namespace gomoru.su.LightController.API.Editor
 {
@@ -25,6 +23,7 @@ namespace gomoru.su.LightController.API.Editor
                 return;
 
             DrawParameterGroupCore<T>.Run(group);
+            EditorGUILayout.Space(12);
         }
 
 
@@ -72,6 +71,7 @@ namespace gomoru.su.LightController.API.Editor
 
             EditorGUI.BeginDisabledGroup(!check.boolValue);
 
+            EditorGUI.indentLevel++;
             var value = parameter.FindPropertyRelative("Value");
             if (attributes.FirstOrDefault(x => x is RangeAttribute) is RangeAttribute range)
             {
@@ -88,6 +88,7 @@ namespace gomoru.su.LightController.API.Editor
             {
                 EditorGUI.PropertyField(position, value, GUIContent.none);
             }
+            EditorGUI.indentLevel--;
 
             EditorGUI.EndDisabledGroup();
         }
@@ -140,9 +141,8 @@ namespace gomoru.su.LightController.API.Editor
 
             static DrawParameterGroupCore()
             {
-                var method = new DynamicMethod("", null, new[] { typeof(SerializedProperty) });
+                var method = new DynamicMethod(nameof(Run), null, new[] { typeof(SerializedProperty) });
                 var il = method.GetILGenerator();
-                il.DeclareLocal(typeof(SerializedProperty));
                 il.DeclareLocal(typeof(SerializedProperty));
 
                 var parameters = typeof(T).GetFields();
@@ -151,70 +151,65 @@ namespace gomoru.su.LightController.API.Editor
                 {
                     FieldInfo parameter = parameters[i];
 
-                    // ${property} = ${arg0}.FindPropertyRelative(${parameter.Name});
+                    // var property = ${arg0}.FindPropertyRelative(${parameter.Name});
                     il.Emit(OpCodes.Ldarg_0);
                     il.Emit(OpCodes.Ldstr, parameter.Name);
-                    il.Emit(OpCodes.Callvirt, FindPropertyRelative);
+                    il.Emit(OpCodes.Callvirt, ReflectionCache.FindPropertyRelative);
+                    il.Emit(OpCodes.Dup);
+                    il.Emit(OpCodes.Stloc_0);
 
+                    var label = il.DefineLabel();
+                    // if (property is null) continue;
+                    il.Emit(OpCodes.Brfalse_S, label);
+
+                    il.Emit(OpCodes.Ldloc_0);
                     if (typeof(Parameter).IsAssignableFrom(parameter.FieldType))
                     {
-                        // ${attributes} = typeof(T).GetField(${parameter}).GetCustomAttributes();
+                        // ${attributes} = typeof(T).GetField(property).GetCustomAttributes();
                         il.Emit(OpCodes.Ldtoken, typeof(T));
-                        il.Emit(OpCodes.Call, typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle)));
+                        il.Emit(OpCodes.Call, ReflectionCache.GetTypeFromHandle);
                         il.Emit(OpCodes.Ldstr, parameter.Name);
-                        il.Emit(OpCodes.Call, typeof(Type).GetMethod(nameof(Type.GetField), new[] { typeof(string) }));
+                        il.Emit(OpCodes.Call, ReflectionCache.GetMethod);
                         il.Emit(OpCodes.Ldc_I4_0);
-                        il.Emit(OpCodes.Callvirt, typeof(MemberInfo).GetMethod(nameof(MemberInfo.GetCustomAttributes), new[] { typeof(bool) }));
+                        il.Emit(OpCodes.Callvirt, ReflectionCache.GetCustomAttributes);
 
-                        // DrawParameter(${property}, ${attributes});
-                        il.Emit(OpCodes.Call, typeof(ShaderSettingsEditor).GetMethod(nameof(DrawParameter), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static).MakeGenericMethod(parameter.FieldType));
+                        // DrawParameter(property, ${attributes});
+                        il.Emit(OpCodes.Call, ReflectionCache.DrawParameter.MakeGenericMethod(parameter.FieldType));
                     }
                     else
                     {
+                        // EditorGUILayout.PropertyField(property);
                         il.Emit(OpCodes.Ldnull);
-                        il.Emit(OpCodes.Call, typeof(EditorGUILayout).GetMethod(nameof(EditorGUILayout.PropertyField), new[] { typeof(SerializedProperty), typeof(GUILayoutOption[]) }));
+                        il.Emit(OpCodes.Call, ReflectionCache.PropertyField);
                         il.Emit(OpCodes.Pop);
                     }
 
                     if (i != parameters.Length - 1)
                     {
+                        // EditorGUILayout.Space(12);
                         il.Emit(OpCodes.Ldc_R4, 12);
                         il.Emit(OpCodes.Call, ReflectionCache.Space);
                     }
+                    il.MarkLabel(label);
                 }
                 il.Emit(OpCodes.Ret);
 
                 Run = method.CreateDelegate(typeof(Action<SerializedProperty>)) as Action<SerializedProperty>;
             }
         }
+
+        private static class ReflectionCache
+        {
+            public static MethodInfo GetTypeFromHandle = typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle));
+            public static MethodInfo GetMethod = typeof(Type).GetMethod(nameof(Type.GetField), new[] { typeof(string) });
+            public static MethodInfo GetCustomAttributes = typeof(MemberInfo).GetMethod(nameof(MemberInfo.GetCustomAttributes), new[] { typeof(bool) });
+            public static MethodInfo DrawParameter = typeof(ShaderSettingsEditor).GetMethod(nameof(DrawParameter), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+
+            public static MethodInfo FindPropertyRelative = typeof(SerializedProperty).GetMethod(nameof(SerializedProperty.FindPropertyRelative));
+            public static MethodInfo PropertyField = typeof(EditorGUILayout).GetMethod(nameof(EditorGUILayout.PropertyField), new[] { typeof(SerializedProperty), typeof(GUILayoutOption[]) });
+            public static MethodInfo Space = typeof(GUILayout).GetMethod(nameof(GUILayout.Space));
+        }
     }
-
-    internal static class ReflectionCache
-    {
-        public static MethodInfo GetEmptyGUILayoutOptionArray = typeof(Array).GetMethod("Empty").MakeGenericMethod(typeof(GUILayoutOption));
-
-        public static MethodInfo FindPropertyRelative = typeof(SerializedProperty).GetMethod(nameof(SerializedProperty.FindPropertyRelative));
-        public static PropertyInfo FloatValue = typeof(SerializedProperty).GetProperty(nameof(SerializedProperty.floatValue));
-        public static PropertyInfo BoolValue = typeof(SerializedProperty).GetProperty(nameof(SerializedProperty.boolValue));
-        public static PropertyInfo DisplayName = typeof(SerializedProperty).GetProperty(nameof(SerializedProperty.displayName));
-        public static FieldInfo EmptyGUIContent = typeof(GUIContent).GetField(nameof(GUIContent.none), BindingFlags.Public | BindingFlags.Static);
-
-        public static MethodInfo PropertyField = typeof(EditorGUILayout).GetMethod(nameof(EditorGUILayout.PropertyField), new[] { typeof(SerializedProperty), typeof(GUILayoutOption[]) });
-        public static MethodInfo PropertyFieldWithLabel = typeof(EditorGUILayout).GetMethod(nameof(EditorGUILayout.PropertyField), new[] { typeof(SerializedProperty), typeof(GUIContent), typeof(GUILayoutOption[]) });
-        public static MethodInfo LabelField = typeof(EditorGUILayout).GetMethod(nameof(EditorGUILayout.LabelField), new[] { typeof(string), typeof(GUILayoutOption[]) });
-        public static MethodInfo Slider = typeof(EditorGUILayout).GetMethod(nameof(EditorGUILayout.Slider), new[] { typeof(float), typeof(float), typeof(float), typeof(GUILayoutOption[]) });
-        public static MethodInfo ToggleLeft = typeof(EditorGUILayout).GetMethod(nameof(EditorGUILayout.ToggleLeft), new[] { typeof(string), typeof(bool), typeof(GUILayoutOption[]) });
-
-        public static MethodInfo BeginHorizontal = typeof(EditorGUILayout).GetMethod(nameof(EditorGUILayout.BeginHorizontal), new[] { typeof(GUILayoutOption[]) });
-        public static MethodInfo EndHorizontal = typeof(EditorGUILayout).GetMethod(nameof(EditorGUILayout.EndHorizontal));
-
-        public static MethodInfo FlexibleSpace = typeof(GUILayout).GetMethod(nameof(GUILayout.FlexibleSpace));
-        public static MethodInfo Space = typeof(GUILayout).GetMethod(nameof(GUILayout.Space));
-
-        public static FieldInfo ToggleWidth = typeof(ReflectionCache).GetField(nameof(_ToggleWidth), BindingFlags.Public | BindingFlags.Static);
-        public static readonly GUILayoutOption[] _ToggleWidth = new[] { GUILayout.Width(64) };
-    }
-
 }
 
 #endif

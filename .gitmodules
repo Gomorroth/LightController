@@ -1,0 +1,3 @@
+[submodule "Editor/DirectBlendTree"]
+	path = Editor/DirectBlendTree
+	url = https://gist.github.com/b89e608b35c44327014759ffa6af9f39.git

@@ -1,7 +1,7 @@
 {
     "name": "gomoru.su.light-controller.builtin.lilToon",
     "references": [
-        "GUID:2b4abffb6c5a3f54ebdd8a57be97a5bd"
+        "gomoru.su.light-controller"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

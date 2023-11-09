@@ -15,4 +15,9 @@ public sealed partial class LilToon : ShaderSettings
     public BacklightGroup Backlight = new BacklightGroup();
 
     public DistanceFadeGroup DistanceFade = new DistanceFadeGroup();
+
+    public override bool IsTargetMaterial(Material material)
+    {
+        return material?.shader?.name.IndexOf("lilToon", System.StringComparison.OrdinalIgnoreCase) != 0;
+    }
 }

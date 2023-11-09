@@ -1,10 +1,10 @@
-﻿using UnityEditor;
+﻿using gomoru.su.LightController.API;
+using UnityEditor;
 using UnityEngine;
 
 namespace gomoru.su.LightController
 {
     [CustomEditor(typeof(LightController))]
-    [CanEditMultipleObjects]
     public sealed class LightControllerEditor : Editor
     {
         private static Material _referenceMaterial;
@@ -16,6 +16,15 @@ namespace gomoru.su.LightController
         public override void OnInspectorGUI ()
         {
             serializedObject.Update();
+
+            EditorGUI.BeginDisabledGroup(true);
+            foreach(var x in (target as Component).GetComponentsInChildren<ShaderSettings>())
+            {
+                EditorGUILayout.ObjectField(GUIContent.none, x, typeof(ShaderSettings), false);
+            }
+            EditorGUI.EndDisabledGroup();
+
+            EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(LightController.Excludes)));
 
             serializedObject.ApplyModifiedProperties();
         }

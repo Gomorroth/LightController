@@ -55,4 +55,17 @@ namespace gomoru.su.LightController.API.Attributes
             QualifiedName = qualifiedName;
         }
     }
+
+    [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
+    public sealed class VectorProxyAttribute : Attribute
+    {
+        public string TargetName { get; set; }
+        public int Index { get; set; }
+
+        public VectorProxyAttribute(string targetName, int index)
+        {
+            TargetName = targetName;
+            Index = index;
+        }
+    }
 }

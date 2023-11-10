@@ -5,6 +5,8 @@ namespace gomoru.su.LightController.API
     [Serializable]
     public abstract class Parameter
     {
+        public string Name;
+
         public bool IsEnable = true; 
         public bool IsSync = true;
         public bool IsSave = true;

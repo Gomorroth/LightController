@@ -36,23 +36,13 @@ namespace gomoru.su.LightController.API.Attributes
         public string MaxLimitter { get; }
     }
 
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Field)]
-    public sealed class DisplayNameAttribute : Attribute
+    [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
+    public sealed class ParameterNameAttribute : Attribute
     {
-        public string DisplayName { get; set; }
-        public DisplayNameAttribute(string displayName)
+        public string Name { get; set; }
+        public ParameterNameAttribute(string displayName)
         {
-            DisplayName = displayName;
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Field)]
-    public sealed class QualifiedNameAttribute : Attribute
-    {
-        public string QualifiedName { get; set; }
-        public QualifiedNameAttribute(string qualifiedName)
-        {
-            QualifiedName = qualifiedName;
+            Name = displayName;
         }
     }
 

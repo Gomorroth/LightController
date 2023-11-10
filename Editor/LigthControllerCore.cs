@@ -56,6 +56,11 @@ namespace gomoru.su.LightController
             {
                 foreach (var shaderSetting in shaderSettings)
                 {
+                    foreach(var parameter in shaderSetting.GetParameters())
+                    {
+                        Debug.Log(parameter.Name);
+                    }
+                    break;
                     foreach (var renderer in targetRenderers)
                     {
                         var materials = renderer.sharedMaterials;

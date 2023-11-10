@@ -30,6 +30,8 @@ partial class LilToon
     [Serializable]
     public sealed class BacklightGroup : ParameterGroup
     {
+        public override bool UseGroupNameAsPrefix => true;
+
         public Color Color = new Color(0.85f, 0.8f, 0.7f, 1.0f);
 
         [Range(0f, 1f)]
@@ -58,6 +60,7 @@ partial class LilToon
     [Serializable]
     public sealed class DistanceFadeGroup : ParameterGroup
     {
+        public override bool UseGroupNameAsPrefix => true;
         [NonSerialized]
         public Vector4 DistanceFade = new Vector4(0.1f, 0.01f, 0, 0);
 

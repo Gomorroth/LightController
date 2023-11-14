@@ -2,12 +2,18 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using gomoru.su.LightController.API;
+using gomoru.su.LightController.API.Attributes;
 using nadena.dev.modular_avatar.core;
+using nadena.dev.ndmf.util;
 using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using VRC.SDK3.Avatars.Components;
+using VRC.SDK3.Avatars.ScriptableObjects;
+using YamlDotNet.Core.Tokens;
 using static VRC.SDKBase.VRCPlayerApi;
 using Object = UnityEngine.Object;
 
@@ -18,7 +24,9 @@ namespace gomoru.su.LightController
         [MenuItem("Test/LightController")]
         public static void Test()
         {
-            Run(Object.FindObjectOfType<LightController>(), null);
+            var container = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
+            AssetDatabase.CreateAsset(container, "Assets/TestContainer.asset");
+            Run(Object.FindObjectOfType<LightController>(), container);
         }
 
         public static void Run(LightController lightController, Object assetContainer)
@@ -50,58 +58,205 @@ namespace gomoru.su.LightController
                 })
                 .Map(avatar.gameObject);
 
-            var relation = new AnimationRelatedObjectManager(animations);
-
-            using (var cache = new ObjectCache(assetContainer))
+            lightController.gameObject.GetOrAddComponent<ModularAvatarMenuItem>(x =>
             {
+                x.Control.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
+                x.MenuSource = SubmenuSource.Children;
+            });
+
+            using (var container = new ObjectContainer(assetContainer))
+            {
+                var directBlendTree = new DirectBlendTree(container.Container);
+                var avatarParameters = new List<AvatarParameterInfo>();
+
                 foreach (var shaderSetting in shaderSettings)
                 {
-                    foreach(var parameter in shaderSetting.GetParameters())
+                    var root = directBlendTree.AddDirectBlendTree();
+                    root.Name = shaderSetting.DisplayName;
+                    void Process<T>(T obj, DirectBlendTree treeParent, GameObject menuParent)
                     {
-                        Debug.Log(parameter.Name);
-                    }
-                    break;
-                    foreach (var renderer in targetRenderers)
-                    {
-                        var materials = renderer.sharedMaterials;
-                        bool flag = false;
-                        foreach(var material in materials)
+                        foreach (var field in obj.GetType().GetFields(BindingFlags.Public | BindingFlags.Instance))
                         {
-                            flag = shaderSetting.IsTargetMaterial(material);
-                            if (flag)
-                                break;
+                            if (typeof(Parameter).IsAssignableFrom(field.FieldType))
+                            {
+                                var parameter = field.GetValue(obj) as Parameter;
+
+                                if (parameter == null || !parameter.IsEnable)
+                                    continue;
+
+                                var name = $"{(obj is ParameterGroup group && group.UseGroupNameAsPrefix ? group.Name : "")}{field.Name}";
+                                string shaderParameterName;
+                                if (field.GetCustomAttribute<VectorProxyAttribute>() is VectorProxyAttribute vectorProxy)
+                                {
+                                    var f = 
+                                        vectorProxy.Field == VectorField.X ? "x" :
+                                        vectorProxy.Field == VectorField.Y ? "y" :
+                                        vectorProxy.Field == VectorField.Z ? "z" :
+                                        vectorProxy.Field == VectorField.W ? "w" :
+                                        "";
+                                    shaderParameterName = $"material._{vectorProxy.TargetName}.{f}";
+                                }
+                                else
+                                {
+                                    shaderParameterName = $"material._{name}";
+                                }
+
+                                var min = new AnimationClip() { name = $"{name}.Min", }.AddTo(container);
+                                var max = new AnimationClip() { name = $"{name}.Max", }.AddTo(container);
+
+                                parameter.Name = name;
+                                if (field.GetCustomAttribute<RangeAttribute>() is RangeAttribute range)
+                                {
+                                    (parameter.MinValue, parameter.MaxValue) = (range.min, range.max);
+                                }
+
+                                shaderSetting.OnParameterPostProcess(parameter);
+
+                                foreach(var renderer in targetRenderers)
+                                {
+                                    var path = renderer.gameObject.AvatarRootPath();
+                                    var type = renderer.GetType();
+
+                                    min.SetCurve(path, type, shaderParameterName, AnimationCurve.Constant(0, 0, parameter.MinValue));
+                                    max.SetCurve(path, type, shaderParameterName, AnimationCurve.Constant(0, 0, parameter.MaxValue));
+                                }
+
+                                var menu = new GameObject();
+                                menu.transform.parent = menuParent.transform;
+                                var menuItem = menu.AddComponent<ModularAvatarMenuItem>();
+                                menu.name = field.Name;
+                                if (parameter is Parameter<float> floatParam)
+                                {
+                                    avatarParameters.Add(CreateParameter(name, parameter.IsSync, parameter.IsSave, floatParam.Value));
+                                    menuItem.Control.type = VRCExpressionsMenu.Control.ControlType.RadialPuppet;
+                                    menuItem.Control.subParameters = new[] { new VRCExpressionsMenu.Control.Parameter() { name = name } };
+                                }
+                                else if (parameter is Parameter<bool> boolParam)
+                                {
+                                    avatarParameters.Add(CreateParameter(name, parameter.IsSync, parameter.IsSave, boolParam.Value));
+                                    menuItem.Control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
+                                    menuItem.Control.parameter = new VRCExpressionsMenu.Control.Parameter() { name = name };
+                                }
+
+                                var tree = treeParent.AddToggle(name);
+                                tree.Name = field.Name;
+                                tree.OFF = min;
+                                tree.ON = max;
+                            }
+                            else if (typeof(ParameterGroup).IsAssignableFrom(field.FieldType))
+                            {
+                                var parameterGroup = field.GetValue(obj) as ParameterGroup;
+                                if (parameterGroup == null || !parameterGroup.IsEnable)
+                                    continue;
+
+                                var menu = new GameObject();
+                                menu.transform.parent = menuParent.transform;
+                                var menuItem = menu.AddComponent<ModularAvatarMenuItem>();
+                                menu.name = parameterGroup.Name;
+                                menuItem.Control.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
+                                menuItem.MenuSource = SubmenuSource.Children;
+
+                                var tree = treeParent.AddDirectBlendTree();
+                                tree.Name = parameterGroup.Name;
+                                Process(parameterGroup, tree, menu);
+                            }
                         }
-                        if (!flag)
-                            continue;
-
-
                     }
+                    Process(shaderSetting, root, lightController.gameObject);
                 }
-            }
-        }
-    }
 
-    internal sealed class AnimationRelatedObjectManager
-    {
-        private readonly ImmutableDictionary<GameObject, Object[]> _dict;
-        public AnimationRelatedObjectManager(IEnumerable<(GameObject Root, AnimationClip Motion)> animationClips)
-        {
-            _dict = animationClips
-                .SelectMany(x => 
-                    AnimationUtility.GetObjectReferenceCurveBindings(x.Motion)
-                    .Select(binding => AnimationUtility.GetObjectReferenceValue(x.Root, binding, out var data) ? (x.Root.transform.Find(binding.path)?.gameObject, data) : default).Where(y => y.data != null))
-                .GroupBy(x => x.gameObject, x => x.data)
-                .ToImmutableDictionary(x => x.Key, x => x.ToArray());
-        }
-        public bool TryGetRelatedObjects(GameObject gameObject, out ReadOnlySpan<Object> result)
-        {
-            if (_dict.TryGetValue(gameObject, out var array))
-            {
-                result = array;
-                return true;
+                var animator = new AnimatorController() { name = "Light Controller" }.AddTo(container);
+                var layer = directBlendTree.ToAnimatorControllerLayer();
+                layer.name = "Light Controller";
+                animator.AddLayer(layer);
+
+                animator.AddParameter(new AnimatorControllerParameter() { name = "1", defaultFloat = 1, type = AnimatorControllerParameterType.Float });
+
+                foreach(var parameter in avatarParameters)
+                {
+                    animator.AddParameter(parameter.ToAnimatorParameter());
+                }
+
+                lightController.gameObject.GetOrAddComponent<ModularAvatarMergeAnimator>(x =>
+                {
+                    x.animator = animator;
+                    x.layerType = VRCAvatarDescriptor.AnimLayerType.FX;
+                    x.matchAvatarWriteDefaults = false;
+                    x.pathMode = MergeAnimatorPathMode.Absolute;
+                });
+
+                lightController.gameObject.GetOrAddComponent<ModularAvatarParameters>(x =>
+                {
+                    x.parameters.AddRange(avatarParameters.Select(parameter =>
+                    {
+                        var p = parameter.ToParameterConfig();
+                        p.internalParameter = true;
+                        return p;
+                    }));
+                });
             }
-            result = default;
-            return false;
+        }
+
+        private static AvatarParameterInfo CreateParameter(string name, bool isSync, bool isSave, float value)
+        {
+            return new AvatarParameterInfo(name, AnimatorControllerParameterType.Float, ParameterSyncType.Float, isSync, isSave, value);
+        }
+        private static AvatarParameterInfo CreateParameter(string name, bool isSync, bool isSave, bool value)
+        {
+            return new AvatarParameterInfo(name, AnimatorControllerParameterType.Float, ParameterSyncType.Bool, isSync, isSave, value);
+        }
+
+        private readonly struct AvatarParameterInfo
+        {
+            public readonly string Name;
+            public readonly AnimatorControllerParameterType AnimatorType;
+            public readonly ParameterSyncType ExpressionType;
+
+            public readonly bool IsSync;
+            public readonly bool IsSave;
+            public readonly float Value;
+
+            public AvatarParameterInfo(string name, AnimatorControllerParameterType animatorType, ParameterSyncType expressionType, bool isSync, bool isSave, bool value) : this(name, animatorType, expressionType, isSync, isSave, value ? 1f : 0f) { }
+
+            public AvatarParameterInfo(string name, AnimatorControllerParameterType animatorType, ParameterSyncType expressionType, bool isSync, bool isSave, int value) : this(name, animatorType, expressionType, isSync, isSave, (float)value) { }
+
+            public AvatarParameterInfo(string name, AnimatorControllerParameterType animatorType, ParameterSyncType expressionType, bool isSync, bool isSave, float value)
+            {
+                Name = name;
+                AnimatorType = animatorType;
+                ExpressionType = expressionType;
+                IsSync = isSync;
+                IsSave = isSave;
+                Value = value;
+            }
+
+            public AnimatorControllerParameter ToAnimatorParameter()
+            {
+                return new AnimatorControllerParameter()
+                {
+                    name = Name,
+                    type = AnimatorType,
+                    defaultBool = ToBool(),
+                    defaultFloat = ToFloat(),
+                    defaultInt = ToInt(),
+                };
+            }
+
+            public ParameterConfig ToParameterConfig()
+            {
+                return new ParameterConfig()
+                {
+                    nameOrPrefix = Name,
+                    syncType = ExpressionType,
+                    localOnly = !IsSync,
+                    saved = IsSave,
+                    defaultValue = Value,
+                };
+            }
+
+            private bool ToBool() => Value != 0;
+            private float ToFloat() => Value;
+            private int ToInt() => (int)Value;
         }
     }
 }

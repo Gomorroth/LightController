@@ -6,36 +6,6 @@ using UnityEditor;
 
 namespace gomoru.su.LightController.API.Attributes
 {
-    [AttributeUsage(AttributeTargets.Field)]
-    public sealed class MinMaxAttribute : PropertyAttribute
-    {
-        public MinMaxAttribute(float min, float max) 
-        {
-            Min = min;
-            Max = max;
-        }
-        public MinMaxAttribute(float min, string max)
-        {
-            Min = min;
-            MaxLimitter = max;
-        }
-        public MinMaxAttribute(string min, float max)
-        {
-            MinLimitter = min;
-            Max = max;
-        }
-        public MinMaxAttribute(string min, string max)
-        {
-            MinLimitter = min;
-            MaxLimitter = max;
-        }
-
-        public float Min { get; }
-        public float Max { get; }
-        public string MinLimitter { get; }
-        public string MaxLimitter { get; }
-    }
-
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
     public sealed class ParameterNameAttribute : Attribute
     {
@@ -49,13 +19,44 @@ namespace gomoru.su.LightController.API.Attributes
     [AttributeUsage(AttributeTargets.Field, AllowMultiple = false)]
     public sealed class VectorProxyAttribute : Attribute
     {
-        public string TargetName { get; set; }
-        public int Index { get; set; }
+        public string TargetName { get; }
+        public VectorField Field { get; }
 
-        public VectorProxyAttribute(string targetName, int index)
+        public VectorProxyAttribute(string targetName, VectorField field)
         {
             TargetName = targetName;
-            Index = index;
+            Field = field;
         }
+    }
+
+    [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = true)]
+    public sealed class ColorControlAttribute : Attribute
+    {
+        public ColorControlAttribute(VectorField targetFields)
+        {
+            TargetFields = targetFields;
+        }
+
+        public VectorField TargetFields { get; }
+    }
+
+    [Flags]
+    public enum VectorField
+    {
+        X = 1 << 0,
+        Y = 1 << 1,
+        Z = 1 << 2,
+        W = 1 << 3,
+
+        R = 1 << 0,
+        G = 1 << 1,
+        B = 1 << 2,
+        A = 1 << 3,
+
+        XYZ = X | Y | Z,
+        XYZW = XYZ | W,
+
+        RGB = R | G | B,
+        RGBA = RGB | A,
     }
 }

@@ -1,15 +1,23 @@
 ﻿using System;
+using UnityEngine;
 
 namespace gomoru.su.LightController.API
 {
     [Serializable]
     public abstract class Parameter
     {
-        public string Name;
-
         public bool IsEnable = true; 
         public bool IsSync = true;
         public bool IsSave = true;
+
+        [NonSerialized]
+        public string Name;
+
+        [NonSerialized]
+        public float MinValue = 0;
+
+        [NonSerialized]
+        public float MaxValue = 1;
 
         private protected Parameter() { }
     }
@@ -28,6 +36,7 @@ namespace gomoru.su.LightController.API
         }
 
         public static implicit operator Parameter<T>(T value) => new Parameter<T>(value);
+        public static explicit operator T(Parameter<T> parameter) => parameter.Value;
     }
 
     [Serializable]
@@ -41,7 +50,6 @@ namespace gomoru.su.LightController.API
         public static implicit operator FloatParameter(float value) => new FloatParameter(value);
     }
 
-
     [Serializable]
     public sealed class BoolParameter : Parameter<bool>
     {
@@ -52,4 +60,18 @@ namespace gomoru.su.LightController.API
 
         public static implicit operator BoolParameter(bool value) => new BoolParameter(value);
     }
+
+
+    [Serializable]
+    public sealed class ColorParameter : Parameter<Color>
+    {
+        public ColorParameter(Color value)
+        {
+            Value = value;
+        }
+
+        public static implicit operator ColorParameter(Color value) => new ColorParameter(value);
+    }
+
+
 }

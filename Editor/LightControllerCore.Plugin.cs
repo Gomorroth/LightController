@@ -16,21 +16,17 @@ namespace gomoru.su.LightController
         {
             InPhase(BuildPhase.Transforming)
             .BeforePlugin(ModularAvatarQualifiedName)
-            .Run(new GeneratePass());
-        }
-
-        private sealed class GeneratePass : Pass<GeneratePass>
-        {
-            public override string DisplayName => "Light Controller";
-
-            protected override void Execute(BuildContext context)
+            .Run(DisplayName, context =>
             {
                 var controller = context.AvatarRootObject.GetComponentInChildren<LightController>();
+                
+                Run(controller, context.AssetContainer);
+
                 if (controller != null)
                 {
                     GameObject.DestroyImmediate(controller);
                 }
-            }
+            });
         }
     }
 }

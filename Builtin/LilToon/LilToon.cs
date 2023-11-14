@@ -16,8 +16,22 @@ public sealed partial class LilToon : ShaderSettings
 
     public DistanceFadeGroup DistanceFade = new DistanceFadeGroup();
 
+
+
     public override bool IsTargetMaterial(Material material)
     {
         return material?.shader?.name.IndexOf("lilToon", System.StringComparison.OrdinalIgnoreCase) != 0;
+    }
+
+    public override void OnParameterPostProcess(Parameter parameter)
+    {
+        if (parameter.Name == nameof(LightingGroup.LightMaxLimit))
+        {
+            parameter.MaxValue = LightMaxLimitMax;
+        }
+        else if (parameter.Name == $"{DistanceFade.Name}{nameof(DistanceFade.End)}")
+        {
+            parameter.MaxValue = DistanceFadeEndMax;
+        }
     }
 }

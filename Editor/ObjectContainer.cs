@@ -5,12 +5,12 @@ using Object = UnityEngine.Object;
 
 namespace gomoru.su.LightController
 {
-    internal sealed class ObjectCache : IDisposable
+    internal sealed class ObjectContainer : IDisposable
     {
         public readonly Object Container;
         private List<Item> _items = new List<Item>();
 
-        public ObjectCache(Object assetContainer)
+        public ObjectContainer(Object assetContainer)
         {
             Container = assetContainer;
         }

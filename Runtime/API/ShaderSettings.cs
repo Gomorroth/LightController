@@ -14,16 +14,12 @@ namespace gomoru.su.LightController.API
     public abstract partial class ShaderSettings : MonoBehaviour, IEditorOnly
     {
         public virtual string DisplayName => GetType().Name;
+        public virtual string QualifiedName => GetType().FullName;
 
         protected virtual void OnEnable() { }
 
         public abstract bool IsTargetMaterial(Material material);
 
-        internal Parameter[] GetParameters()
-        {
-            return _GetParameters[this.GetType()](this);
-        }
-
-        internal static ImmutableDictionary<Type, Func<ShaderSettings, Parameter[]>> _GetParameters;
+        public virtual void OnParameterPostProcess(Parameter parameter) { }
     }
 }

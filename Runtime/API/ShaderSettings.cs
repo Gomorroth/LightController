@@ -20,6 +20,6 @@ namespace gomoru.su.LightController.API
 
         public abstract bool IsTargetMaterial(Material material);
 
-        public virtual void OnParameterPostProcess(Parameter parameter) { }
+        public virtual void OnParameterPostProcess(string name, Parameter parameter, ref float min, ref float max) { }
     }
 }

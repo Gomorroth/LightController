@@ -17,8 +17,6 @@ namespace gomoru.su.LightController
     {
         private static class ShaderSettings
         {
-            private static readonly FieldInfo NameField = typeof(Parameter).GetField(nameof(Parameter.Name));
-
             public static void Initialize()
             {
                 var types = AppDomain.CurrentDomain.GetAssemblies()
@@ -146,31 +144,6 @@ namespace gomoru.su.LightController
                             il.Emit(OpCodes.Stloc_0);
                         }
                         il.Emit(OpCodes.Ldfld, parameter.Field);
-                        il.Emit(OpCodes.Dup);
-                        il.Emit(OpCodes.Ldfld, NameField);
-
-                        var label = il.DefineLabel();
-                        il.Emit(OpCodes.Ldnull);
-                        il.Emit(OpCodes.Ceq);
-                        il.Emit(OpCodes.Brtrue_S, label);
-                        il.Emit(OpCodes.Dup);
-
-
-                        if (parameter.Field.GetCustomAttribute<ParameterNameAttribute>() is ParameterNameAttribute attr)
-                        {
-                            il.Emit(OpCodes.Ldstr, attr.Name);
-                        }
-                        else
-                        {
-                            il.Emit(OpCodes.Ldstr, "_");
-                            il.Emit(OpCodes.Ldloc_0);
-                            il.Emit(OpCodes.Ldstr, parameter.Field.Name);
-                            il.Emit(OpCodes.Call, typeof(string).GetMethod(nameof(string.Concat), new[] { typeof(string), typeof(string), typeof(string) }));
-                        }
-
-                        il.Emit(OpCodes.Stfld, NameField);
-
-                        il.MarkLabel(label);
                         il.Emit(OpCodes.Stelem_Ref);
                     }
                     il.Emit(OpCodes.Ret);

@@ -11,13 +11,10 @@ namespace gomoru.su.LightController.API
         public bool IsSave = true;
 
         [NonSerialized]
-        public string Name;
+        internal float MinValue = 0;
 
         [NonSerialized]
-        public float MinValue = 0;
-
-        [NonSerialized]
-        public float MaxValue = 1;
+        internal float MaxValue = 1;
 
         private protected Parameter() { }
     }

@@ -23,15 +23,15 @@ public sealed partial class LilToon : ShaderSettings
         return material?.shader?.name.IndexOf("lilToon", System.StringComparison.OrdinalIgnoreCase) != 0;
     }
 
-    public override void OnParameterPostProcess(Parameter parameter)
+    public override void OnParameterPostProcess(string name, Parameter parameter, ref float min, ref float max)
     {
-        if (parameter.Name == nameof(LightingGroup.LightMaxLimit))
+        if (name == nameof(LightingGroup.LightMaxLimit))
         {
-            parameter.MaxValue = LightMaxLimitMax;
+            max = LightMaxLimitMax;
         }
-        else if (parameter.Name == $"{DistanceFade.Name}{nameof(DistanceFade.End)}")
+        else if (name == $"{DistanceFade.Name}{nameof(DistanceFade.End)}")
         {
-            parameter.MaxValue = DistanceFadeEndMax;
+            max = DistanceFadeEndMax;
         }
     }
 }

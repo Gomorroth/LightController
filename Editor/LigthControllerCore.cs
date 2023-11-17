@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -85,63 +86,113 @@ namespace gomoru.su.LightController
                                     continue;
 
                                 var name = $"{(obj is ParameterGroup group && group.UseGroupNameAsPrefix ? group.Name : "")}{field.Name}";
-                                string shaderParameterName;
-                                if (field.GetCustomAttribute<VectorProxyAttribute>() is VectorProxyAttribute vectorProxy)
+
+                                bool isColorParameter = typeof(Parameter<Color>).IsAssignableFrom(field.FieldType);
+                                bool isVectorParameter = !isColorParameter && typeof(Parameter<Vector4>).IsAssignableFrom(field.FieldType);
+
+                                if (isColorParameter | isVectorParameter)
                                 {
-                                    var f = 
-                                        vectorProxy.Field == VectorField.X ? "x" :
-                                        vectorProxy.Field == VectorField.Y ? "y" :
-                                        vectorProxy.Field == VectorField.Z ? "z" :
-                                        vectorProxy.Field == VectorField.W ? "w" :
-                                        "";
-                                    shaderParameterName = $"material._{vectorProxy.TargetName}.{f}";
+                                    var treeGroup = treeParent.AddDirectBlendTree();
+                                    var menuGroup = new GameObject();
+                                    menuGroup.name = treeGroup.Name = field.Name;
+                                    menuGroup.transform.parent = menuParent.transform;
+                                    var menuItem = menuGroup.AddComponent<ModularAvatarMenuItem>();
+                                    menuItem.Control.type = VRCExpressionsMenu.Control.ControlType.SubMenu;
+                                    menuItem.MenuSource = SubmenuSource.Children;
+                                    for (int i = 0; i < 4; i++)
+                                    {
+                                        var f = (isColorParameter ? "rgba" : "xyzw")[i];
+                                        var fName = $"{name}.{f}";
+                                        var shaderParameterName = $"material._{fName}";
+
+                                        shaderSetting.OnParameterPostProcess(fName, parameter, ref parameter.MinValue, ref parameter.MaxValue);
+
+                                        var min = new AnimationClip() { name = $"{fName}.Min", }.AddTo(container);
+                                        var max = new AnimationClip() { name = $"{fName}.Max", }.AddTo(container);
+
+                                        foreach (var renderer in targetRenderers)
+                                        {
+                                            var path = renderer.gameObject.AvatarRootPath();
+                                            var type = renderer.GetType();
+
+                                            min.SetCurve(path, type, shaderParameterName, AnimationCurve.Constant(0, 0, parameter.MinValue));
+                                            max.SetCurve(path, type, shaderParameterName, AnimationCurve.Constant(0, 0, parameter.MaxValue));
+                                        }
+                                        string displayName;
+                                        displayName = (isColorParameter ? "RGBA" : "XYZW")[i].ToString();
+                                        var menu = new GameObject();
+                                        menu.name = displayName;
+                                        menu.transform.parent = menuGroup.transform;
+                                        menuItem = menu.AddComponent<ModularAvatarMenuItem>();
+                                        menuItem.Control.type = VRCExpressionsMenu.Control.ControlType.RadialPuppet;
+                                        menuItem.Control.subParameters = new[] { new VRCExpressionsMenu.Control.Parameter() { name = fName } };
+                                        if (isColorParameter)
+                                        {
+                                            var value = (parameter as Parameter<Color>).Value;
+                                            avatarParameters.Add(CreateParameter(fName, parameter.IsSync, parameter.IsSave, Unsafe.Add(ref Unsafe.As<Color, float>(ref value), i)));
+                                        }
+                                        else
+                                        {
+                                            var value = (parameter as Parameter<Vector4>).Value;
+                                            avatarParameters.Add(CreateParameter(fName, parameter.IsSync, parameter.IsSave, Unsafe.Add(ref Unsafe.As<Vector4, float>(ref value), i)));
+                                        }
+                                    }
                                 }
                                 else
                                 {
-                                    shaderParameterName = $"material._{name}";
+
+                                    string shaderParameterName;
+                                    if (field.GetCustomAttribute<VectorProxyAttribute>() is VectorProxyAttribute vectorProxy)
+                                    {
+                                        var f = 'w' + ((int)vectorProxy.Field / 2 + 1) % 5;
+                                        shaderParameterName = $"material._{vectorProxy.TargetName}.{f}";
+                                    }
+                                    else
+                                    {
+                                        shaderParameterName = $"material._{name}";
+                                    }
+
+                                    var min = new AnimationClip() { name = $"{name}.Min", }.AddTo(container);
+                                    var max = new AnimationClip() { name = $"{name}.Max", }.AddTo(container);
+
+                                    if (field.GetCustomAttribute<RangeAttribute>() is RangeAttribute range)
+                                    {
+                                        (parameter.MinValue, parameter.MaxValue) = (range.min, range.max);
+                                    }
+
+                                    shaderSetting.OnParameterPostProcess(name, parameter, ref parameter.MinValue, ref parameter.MaxValue);
+
+                                    foreach (var renderer in targetRenderers)
+                                    {
+                                        var path = renderer.gameObject.AvatarRootPath();
+                                        var type = renderer.GetType();
+
+                                        min.SetCurve(path, type, shaderParameterName, AnimationCurve.Constant(0, 0, parameter.MinValue));
+                                        max.SetCurve(path, type, shaderParameterName, AnimationCurve.Constant(0, 0, parameter.MaxValue));
+                                    }
+
+                                    var menu = new GameObject();
+                                    menu.transform.parent = menuParent.transform;
+                                    var menuItem = menu.AddComponent<ModularAvatarMenuItem>();
+                                    menu.name = field.Name;
+                                    if (parameter is Parameter<float> floatParam)
+                                    {
+                                        avatarParameters.Add(CreateParameter(name, parameter.IsSync, parameter.IsSave, floatParam.Value));
+                                        menuItem.Control.type = VRCExpressionsMenu.Control.ControlType.RadialPuppet;
+                                        menuItem.Control.subParameters = new[] { new VRCExpressionsMenu.Control.Parameter() { name = name } };
+                                    }
+                                    else if (parameter is Parameter<bool> boolParam)
+                                    {
+                                        avatarParameters.Add(CreateParameter(name, parameter.IsSync, parameter.IsSave, boolParam.Value));
+                                        menuItem.Control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
+                                        menuItem.Control.parameter = new VRCExpressionsMenu.Control.Parameter() { name = name };
+                                    }
+
+                                    var tree = treeParent.AddToggle(name);
+                                    tree.Name = field.Name;
+                                    tree.OFF = min;
+                                    tree.ON = max;
                                 }
-
-                                var min = new AnimationClip() { name = $"{name}.Min", }.AddTo(container);
-                                var max = new AnimationClip() { name = $"{name}.Max", }.AddTo(container);
-
-                                parameter.Name = name;
-                                if (field.GetCustomAttribute<RangeAttribute>() is RangeAttribute range)
-                                {
-                                    (parameter.MinValue, parameter.MaxValue) = (range.min, range.max);
-                                }
-
-                                shaderSetting.OnParameterPostProcess(parameter);
-
-                                foreach(var renderer in targetRenderers)
-                                {
-                                    var path = renderer.gameObject.AvatarRootPath();
-                                    var type = renderer.GetType();
-
-                                    min.SetCurve(path, type, shaderParameterName, AnimationCurve.Constant(0, 0, parameter.MinValue));
-                                    max.SetCurve(path, type, shaderParameterName, AnimationCurve.Constant(0, 0, parameter.MaxValue));
-                                }
-
-                                var menu = new GameObject();
-                                menu.transform.parent = menuParent.transform;
-                                var menuItem = menu.AddComponent<ModularAvatarMenuItem>();
-                                menu.name = field.Name;
-                                if (parameter is Parameter<float> floatParam)
-                                {
-                                    avatarParameters.Add(CreateParameter(name, parameter.IsSync, parameter.IsSave, floatParam.Value));
-                                    menuItem.Control.type = VRCExpressionsMenu.Control.ControlType.RadialPuppet;
-                                    menuItem.Control.subParameters = new[] { new VRCExpressionsMenu.Control.Parameter() { name = name } };
-                                }
-                                else if (parameter is Parameter<bool> boolParam)
-                                {
-                                    avatarParameters.Add(CreateParameter(name, parameter.IsSync, parameter.IsSave, boolParam.Value));
-                                    menuItem.Control.type = VRCExpressionsMenu.Control.ControlType.Toggle;
-                                    menuItem.Control.parameter = new VRCExpressionsMenu.Control.Parameter() { name = name };
-                                }
-
-                                var tree = treeParent.AddToggle(name);
-                                tree.Name = field.Name;
-                                tree.OFF = min;
-                                tree.ON = max;
                             }
                             else if (typeof(ParameterGroup).IsAssignableFrom(field.FieldType))
                             {

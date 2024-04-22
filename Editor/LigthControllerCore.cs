@@ -1,420 +1,520 @@
 ﻿using nadena.dev.modular_avatar.core;
 using nadena.dev.ndmf;
 using nadena.dev.ndmf.util;
-using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
-using UnityEditor.Animations;
-using UnityEngine;
 using VRC.SDK3.Avatars.Components;
 using VRC.SDK3.Avatars.ScriptableObjects;
+using VRC.SDKBase;
+using ExpressionMenuItemType = VRC.SDK3.Avatars.ScriptableObjects.VRCExpressionsMenu.Control.ControlType;
 
+namespace gomoru.su.LightController;
 
-namespace gomoru.su.LightController
+internal sealed partial class LightControllerCore
 {
-    internal sealed partial class LightControllerCore
+    private const string PropertyNamePrefix = "material._";
+
+    private static void Generate(BuildContext context, LightController controller)
     {
-        static LightControllerCore()
+        var go = controller.gameObject;
+
+        var renderers = context.AvatarRootObject.GetComponentsInChildren<Renderer>(true)
+            .Where(x => (x is MeshRenderer || x is SkinnedMeshRenderer) && !x.CompareTag("EditorOnly") && !controller.Excludes.Contains(x.gameObject))
+            .Select(x => (Renderer: x, Material: x.sharedMaterials.FirstOrDefault(y => y != null && y.shader.name.Contains("lilToon", StringComparison.OrdinalIgnoreCase))))
+            .Where(x => x.Material != null)
+            .Select(x => x.Renderer);
+        var bindings = renderers
+            .Select(x => new EditorCurveBinding() { type = x.GetType(), path = x.gameObject.AvatarRootPath() })
+            .ToArray();
+
+        var lilToonParameters = controller.DefaultParameters;
+
+        if (controller.OverwriteMaterialSettings)
         {
-             _limitters = typeof(LightController).GetFields().Where(x => x.GetCustomAttribute<LimitParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<LimitParameterAttribute>().Name);
-             _conditions = typeof(LightController).GetFields().Where(x => x.GetCustomAttribute<ConditionParameterAttribute>() != null).ToDictionary(x => x.GetCustomAttribute<ConditionParameterAttribute>().Name);
-
-            Controls = new ParameterControl[]
+            var map = new Dictionary<Material, Material>();
+            foreach (var x in renderers)
             {
-                CreateControl(param => param.UseLighting, setCurves: _ => {}),
-                CreateControl(param => param.LightMinLimit),
-                CreateControl(param => param.LightMaxLimit),
-                CreateControl(param => param.MonochromeLighting),
-                CreateControl(param => param.ShadowEnvStrength),
-                CreateControl(param => param.AsUnlit),
-                CreateControl(param => param.VertexLightStrength),
-
-                CreateControl(param => param.UseBacklight),
-                CreateControl(param => param.BacklightColor,
-                    args => args.List.AddParameter(args.Name, args.Parameters.BacklightColor.a, LilToonParameters.GroupName_Backlight),
-                    args =>
+                var mats = x.sharedMaterials;
+                foreach (ref var mat in mats.AsSpan())
+                {
+                    if (!map.TryGetValue(mat, out var cloned))
                     {
-                        var color = args.Parameters.BacklightColor;
-                        args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.r", AnimationUtils.Constant(color.r));
-                        args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.g", AnimationUtils.Constant(color.g));
-                        args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.b", AnimationUtils.Constant(color.b));
-                        args.Default.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.a", AnimationUtils.Constant(color.a));
-
-                        var zero = default(Color);
-                        Color.RGBToHSV(color, out zero.r , out zero.g, out zero.b);
-                        zero.b = 0;
-                        zero = Color.HSVToRGB(zero.r, zero.g, zero.b);
-
-                        args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.r", AnimationUtils.Linear(zero.r, color.r));
-                        args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.g", AnimationUtils.Linear(zero.g, color.g));
-                        args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.b", AnimationUtils.Linear(zero.b, color.b));
-                        args.Control.SetCurve(args.Path, args.Type, $"{PropertyNamePrefix}{nameof(LilToonParameters.BacklightColor)}.a", AnimationUtils.Linear(zero.a, color.a));
-                    }),
-
-                CreateControl(param => param.BacklightMainStrength),
-                CreateControl(param => param.BacklightReceiveShadow),
-                CreateControl(param => param.BacklightBackfaceMask),
-                CreateControl(param => param.BacklightNormalStrength),
-                CreateControl(param => param.BacklightBorder),
-                CreateControl(param => param.BacklightBlur),
-                CreateControl(param => param.BacklightDirectivity),
-                CreateControl(param => param.BacklightViewStrength),
-
-                CreateControl(param => param.UseDistanceFade, setCurves: _ => { }),
-                CreateControl(param => param.DistanceFadeStart),
-                CreateControl(param => param.DistanceFadeEnd),
-                CreateControl(param => param.DistanceFadeStrength),
-                CreateControl(param => param.DistanceFadeBackfaceForceShadow),
-            };
+                        cloned = Material.Instantiate(mat);
+                        ObjectRegistry.RegisterReplacedObject(mat, cloned);
+                        map.Add(mat, cloned);
+                    }
+                    mat = cloned;
+                }
+                x.sharedMaterials = mats;
+            }
+            SetMaterialParameters(map.Values.ToArray(), lilToonParameters);
         }
 
-        private static readonly ParameterControl[] Controls;
-        private static Dictionary<string, FieldInfo> _limitters;
-        private static Dictionary<string, FieldInfo> _conditions;
-
-        private const string PropertyNamePrefix = "material._";
-        private const string ParameterNamePrefix = "LightController";
-
-        private static void Generate(BuildContext context, LightController controller)
+        var parameters = new List<ParameterConfig>()
         {
-            var fx = new AnimatorController() { name = "LightController" }.AddTo(context.AssetContainer);
-            var go = controller.gameObject;
+            new() { nameOrPrefix = "One", syncType = ParameterSyncType.NotSynced, localOnly = true, defaultValue = 1, },
+            new() { nameOrPrefix = "ControledParameterIndex", syncType = ParameterSyncType.Int, localOnly = true, defaultValue = 0, },
+            new() { nameOrPrefix = "SyncTargetIndex", syncType = ParameterSyncType.Int, localOnly = false, defaultValue = 0, },
+            new() { nameOrPrefix = "SyncedValue", syncType = ParameterSyncType.Float, localOnly = false, defaultValue = 0, },
+        };
 
-            var targets = context.AvatarRootObject.GetComponentsInChildren<Renderer>(true)
-                .Where(x => (x is MeshRenderer || x is SkinnedMeshRenderer) && !x.CompareTag("EditorOnly") && !controller.Excludes.Contains(x.gameObject))
-                .Select(x =>
-                    (Renderer: x,
-                     Material: x.sharedMaterials
-                        .Where(y => y != null)
-                        .FirstOrDefault(y =>
-                            y.shader.name.IndexOf("lilToon", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                            y.shader.EnumeratePropertyNames().Any(z => z == $"_{nameof(LilToonParameters.LightMinLimit)}"))
-                        ))
-                .Where(x => x.Material != null);
+        parameters.AddRange(new ParameterConfig[]
+        {
+            new() { nameOrPrefix = "LightMinLimit", defaultValue = ClampParameterValue(lilToonParameters.LightMinLimit, lilToonParameters.LightMinLimitMin, lilToonParameters.LightMinLimitMax), },
+            new() { nameOrPrefix = "LightMaxLimit", defaultValue = ClampParameterValue(lilToonParameters.LightMaxLimit, lilToonParameters.LightMaxLimitMin, lilToonParameters.LightMaxLimitMax), },
+            new() { nameOrPrefix = "MonochromeLighting", defaultValue = lilToonParameters.MonochromeLighting, },
+            new() { nameOrPrefix = "ShadowEnvStrength", defaultValue = lilToonParameters.ShadowEnvStrength, },
+            new() { nameOrPrefix = "AsUnlit", defaultValue = lilToonParameters.AsUnlit, },
+            new() { nameOrPrefix = "VertexLightStrength", defaultValue = lilToonParameters.VertexLightStrength, },
 
-            List<ParameterControl.Parameter> parameters = new List<ParameterControl.Parameter>();
+            new() { nameOrPrefix = "UseBacklight", defaultValue = lilToonParameters.UseBacklight ? 1 : 0, syncType = ParameterSyncType.Bool },
+            new() { nameOrPrefix = "BacklightColor/R", defaultValue = lilToonParameters.BacklightColor.r, }, 
+            new() { nameOrPrefix = "BacklightColor/G", defaultValue = lilToonParameters.BacklightColor.g, }, 
+            new() { nameOrPrefix = "BacklightColor/B", defaultValue = lilToonParameters.BacklightColor.b, }, 
+            new() { nameOrPrefix = "BacklightColor/A", defaultValue = lilToonParameters.BacklightColor.a, },
+            new() { nameOrPrefix = "BacklightMainStrength", defaultValue = lilToonParameters.BacklightMainStrength, },
+            new() { nameOrPrefix = "BacklightReceiveShadow", defaultValue = lilToonParameters.BacklightReceiveShadow ? 1 : 0, syncType = ParameterSyncType.Bool },
+            new() { nameOrPrefix = "BacklightBackfaceMask", defaultValue = lilToonParameters.BacklightBackfaceMask ? 1 : 0, syncType = ParameterSyncType.Bool },
+            new() { nameOrPrefix = "BacklightNormalStrength", defaultValue = lilToonParameters.BacklightNormalStrength, },
+            new() { nameOrPrefix = "BacklightBorder", defaultValue = lilToonParameters.BacklightBorder, },
+            new() { nameOrPrefix = "BacklightBlur", defaultValue = lilToonParameters.BacklightBlur, },
+            new() { nameOrPrefix = "BacklightDirectivity", defaultValue = lilToonParameters.BacklightDirectivity, },
+            new() { nameOrPrefix = "BacklightViewStrength", defaultValue = lilToonParameters.BacklightViewStrength, },
+
+            new() { nameOrPrefix = "DistanceFadeStart", defaultValue = lilToonParameters.DistanceFadeStart, },
+            new() { nameOrPrefix = "DistanceFadeEnd", defaultValue = lilToonParameters.DistanceFadeEnd, },
+            new() { nameOrPrefix = "DistanceFadeStrength", defaultValue = lilToonParameters.DistanceFadeStrength, },
+            new() { nameOrPrefix = "DistanceFadeBackfaceForceShadow", defaultValue = lilToonParameters.DistanceFadeBackfaceForceShadow ? 1 : 0, syncType = ParameterSyncType.Bool },
+        }
+        .Select(x => x.syncType is ParameterSyncType.Bool ? x with { localOnly = false } : x with { syncType = ParameterSyncType.Float, localOnly = true }));
+        var parameterIDTable = parameters.Skip(4).Where(x => !x.nameOrPrefix.Contains("Cache")).Select((x, i) => (x.nameOrPrefix, i)).ToImmutableDictionary(x => x.nameOrPrefix, x => x.i + 1);
+
+        var blendTree = new DirectBlendTree("One") { Name = "Light Controller" };
+
+        // Lighting
+        {
+            var lighting = blendTree.AddDirectBlendTree("Lighting");
+
+            AddControl(lighting, "LightMinLimit", lilToonParameters.LightMinLimitMin, lilToonParameters.LightMinLimitMax);
+            AddControl(lighting, "LightMaxLimit", lilToonParameters.LightMaxLimitMin, lilToonParameters.LightMaxLimitMax);
+            AddControl(lighting, "MonochromeLighting", 0, 1);
+            AddControl(lighting, "ShadowEnvStrength", 0, 1);
+            AddControl(lighting, "AsUnlit", 0, 1);
+            AddControl(lighting, "VertexLightStrength", 0, 1);
+
+            void AddControl(DirectBlendTree target, string name, float min, float max)
+            {
+                var tree = target.AddBlendTree(name);
+                tree.ParameterName = name;
+                var enable0 = new AnimationClip() { name = "Start" }.AddTo(context.AssetContainer);
+                var enable1 = new AnimationClip() { name = "End" }.AddTo(context.AssetContainer);
+                foreach (var bind in bindings)
+                {
+                    var x = bind with { propertyName = $"{PropertyNamePrefix}{name}" };
+
+                    AnimationUtility.SetEditorCurve(enable0, x, AnimationUtils.Constant(min));
+                    AnimationUtility.SetEditorCurve(enable1, x, AnimationUtils.Constant(max));
+                }
+                tree.Motions.Add(enable0);
+                tree.Motions.Add(enable1);
+            }
+        }
+
+        // Backlight
+        {
+            var backlightRoot = blendTree.AddToggle("Backlight");
+            backlightRoot.ParameterName = "UseBacklight";
+            var backlight = (
+                Disable: backlightRoot.AddDirectBlendTree(DirectBlendTree.Target.OFF, "Disable"),
+                Enable: backlightRoot.AddDirectBlendTree(DirectBlendTree.Target.ON, "Enable")
+                );
+
+            {
+                var disable = new AnimationClip() { name = "Disable" }.AddTo(context.AssetContainer);
+                var enable = new AnimationClip() { name = "Enable" }.AddTo(context.AssetContainer);
+
+                foreach (var bind in bindings)
+                {
+                    var x = bind with { propertyName = $"{PropertyNamePrefix}UseBacklight" };
+
+                    AnimationUtility.SetEditorCurve(disable, x, AnimationUtils.Constant(0));
+                    AnimationUtility.SetEditorCurve(enable, x, AnimationUtils.Constant(1));
+                }
+
+                backlight.Disable.AddMotion(disable);
+                backlight.Enable.AddMotion(enable);
+            }
             
-            var controls = Controls.Where(x => x.Condition(controller)).ToArray();
-
-            if (!controls.Any())
+            // BacklightColor
             {
-                var installer = controller.GetComponent<ModularAvatarMenuInstaller>();
-                if (installer != null)
-                    installer.enabled = false;
-                return;
-            }
+                var disable = new AnimationClip() { name = "BacklightColor" }.AddTo(context.AssetContainer);
+                var tree = backlight.Enable.AddDirectBlendTree("Color");
 
-            foreach (var control in controls)
-            {
-                control.Default = fx.CreateAnim($"{control.Name} Default");
-                control.Control = fx.CreateAnim(control.Name);
-            }
+                var r = tree.AddBlendTree("R");
+                var g = tree.AddBlendTree("G");
+                var b = tree.AddBlendTree("B");
+                var a = tree.AddBlendTree("A");
+                var array = new[] { r, g, b, a };
 
-            var @params = controller.DefaultParameters;
-
-            foreach (var (renderer, material) in targets)
-            {
-                var path = renderer.AvatarRootPath();
-                var type = renderer.GetType();
-
-                foreach(var control in controls)
+                foreach(var x in array)
                 {
-                    control.SetAnimationCurves((path, type, control.Default, control.Control, material, controller, @params));
-                }
-            }
-
-            foreach (var control in controls)
-            {
-                var layer = new AnimatorControllerLayer()
-                {
-                    name = control.Name,
-                    defaultWeight = 1,
-                    stateMachine = new AnimatorStateMachine() { name = control.Name }.HideInHierarchy().AddTo(context.AssetContainer),
-                };
-
-                var stateMachine = layer.stateMachine;
-
-                var idle = stateMachine.CreateState("Idle", control.Default);
-                var state = stateMachine.CreateState(control.Name, control.Control);
-                if (!control.IsMaster)
-                {
-                    state.timeParameter = control.Name;
-                    state.timeParameterActive = true;
+                    x.ParameterName = $"BacklightColor/{x.Name}";
+                    x.Motions.Add(new AnimationClip() { name = "Start" }.AddTo(context.AssetContainer));
+                    x.Motions.Add(new AnimationClip() { name = "End" }.AddTo(context.AssetContainer));
                 }
 
-                idle.AddTransition(state, new AnimatorCondition() { mode = AnimatorConditionMode.If, parameter = control.Group });
-                state.AddTransition(idle, new AnimatorCondition() { mode = AnimatorConditionMode.IfNot, parameter = control.Group });
-
-                stateMachine.AddState(idle, stateMachine.entryPosition + new Vector3(150, 0));
-                stateMachine.AddState(state, stateMachine.entryPosition + new Vector3(150, 50));
-
-                fx.AddLayer(layer);
-
-                control.Parameters((control.Name, controller, @params, parameters));
-            }
-
-            var groups = controls.Select(y => y.Group).Where(y => y != null).Distinct();
-            int groupCount = groups.Count();
-
-            if (controller.AddResetButton)
-            {
-                var layer = new AnimatorControllerLayer()
+                foreach (var bind in bindings)
                 {
-                    name = "Reset",
-                    defaultWeight = 1,
-                    stateMachine = new AnimatorStateMachine() { name = "Reset" }.HideInHierarchy().AddTo(context.AssetContainer),
-                };
-                var stateMachine = layer.stateMachine;
-
-                var blank = new AnimationClip() { name = "Blank" }.HideInHierarchy().AddTo(context.AssetContainer);
-
-                var idle = stateMachine.CreateState("Idle", blank);
-                var states = new AnimatorState[groupCount];
-
-                foreach(var (group, i) in groups.Select((x, i) => (x, i)))
-                {
-                    var state = stateMachine.CreateState(group, blank);
-                    states[i] = state;
-                    stateMachine.AddState(state, stateMachine.entryPosition + new Vector3(300, i * 150 + 200));
-
-                    var dr = state.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
-                    dr.localOnly = true;
-                    foreach(var x in parameters.Where(x => x.Group == group))
+                    for (int i = 0; i < array.Length; i++)
                     {
-                        dr.parameters.Add(new VRC.SDKBase.VRC_AvatarParameterDriver.Parameter()
-                        {
-                            name = x.Name,
-                            type = VRC.SDKBase.VRC_AvatarParameterDriver.ChangeType.Set,
-                            value = x.Value,
-                        });
+                        var color = array[i];
+                        var x = bind with { propertyName = $"{PropertyNamePrefix}BacklightColor.{color.Name.ToLowerInvariant()}" };
+
+                        AnimationUtility.SetEditorCurve(disable, x, AnimationUtils.Constant(lilToonParameters.BacklightColor[i]));
+                        AnimationUtility.SetEditorCurve(color.Motions[0] as AnimationClip, x, AnimationUtils.Constant(0));
+                        AnimationUtility.SetEditorCurve(color.Motions[1] as AnimationClip, x, AnimationUtils.Constant(1));
                     }
                 }
 
-                stateMachine.AddState(idle, stateMachine.entryPosition + new Vector3(0, 200));
-
-                for (int i = 0; i < states.Length; i++)
-                {
-                    var state = states[i];
-                    for (int i2 = i + 1; i2 < states.Length; i2++)
-                    {
-                        var state2 = states[i2];
-
-                        state.AddTransition(state2, new AnimatorCondition() { mode = AnimatorConditionMode.Equals, parameter = "Reset", threshold = i2 + 1 });
-                        state2.AddTransition(state, new AnimatorCondition() { mode = AnimatorConditionMode.Equals, parameter = "Reset", threshold = i + 1 });
-                    }
-
-                    idle.AddTransition(state, new AnimatorCondition() { mode = AnimatorConditionMode.Equals, parameter = "Reset", threshold = i + 1 });
-                    state.AddTransition(idle, new AnimatorCondition() { mode = AnimatorConditionMode.Equals, parameter = "Reset", threshold = 0 });
-                }
-
-                fx.AddLayer(layer);
-                parameters.AddParameter("Reset", 0, null);
+                backlight.Disable.AddMotion(disable);
             }
 
-            foreach (var parameter in parameters)
+            AddControl(backlight, "BacklightMainStrength", lilToonParameters.BacklightMainStrength, 0, 1);
+            AddControl(backlight, "BacklightReceiveShadow", lilToonParameters.BacklightReceiveShadow ? 1 : 0, 0, 1);
+            AddControl(backlight, "BacklightBackfaceMask", lilToonParameters.BacklightBackfaceMask ? 1 : 0, 0, 1);
+            AddControl(backlight, "BacklightNormalStrength", lilToonParameters.BacklightNormalStrength, 0, 1);
+            AddControl(backlight, "BacklightBorder", lilToonParameters.BacklightBorder, 0, 1);
+            AddControl(backlight, "BacklightBlur", lilToonParameters.BacklightBlur, 0, 1);
+            AddControl(backlight, "BacklightDirectivity", lilToonParameters.BacklightDirectivity, 0, 20);
+            AddControl(backlight, "BacklightViewStrength", lilToonParameters.BacklightViewStrength, 0, 1);
+
+            void AddControl(in (DirectBlendTree Disable, DirectBlendTree Enable) target, string name, float defaultValue, float min, float max)
             {
-                fx.AddParameter(parameter.ToControllerParameter());
+                var tree = target.Enable.AddBlendTree(name["Backlight".Length..]);
+                tree.ParameterName = name;
+                var disable = new AnimationClip() { name = name }.AddTo(context.AssetContainer);
+                var enable0 = new AnimationClip() { name = "Start" }.AddTo(context.AssetContainer);
+                var enable1 = new AnimationClip() { name = "End" }.AddTo(context.AssetContainer);
+                foreach (var bind in bindings)
+                {
+                    var x = bind with { propertyName = $"{PropertyNamePrefix}{name}" };
+
+                    AnimationUtility.SetEditorCurve(disable, x, AnimationUtils.Constant(defaultValue));
+                    AnimationUtility.SetEditorCurve(enable0, x, AnimationUtils.Constant(min));
+                    AnimationUtility.SetEditorCurve(enable1, x, AnimationUtils.Constant(max));
+                }
+                target.Disable.AddMotion(disable);
+                tree.Motions.Add(enable0);
+                tree.Motions.Add(enable1);
             }
-
-            go.GetOrAddComponent<ModularAvatarMergeAnimator>(x =>
-            {
-                x.layerType = VRCAvatarDescriptor.AnimLayerType.FX;
-                x.animator = fx;
-                x.matchAvatarWriteDefaults = true;
-                x.pathMode = MergeAnimatorPathMode.Absolute;
-            });
-
-            go.GetOrAddComponent<ModularAvatarMenuInstaller>(x =>
-            {
-                var mainMenu = CreateExpressionMenu("Main Menu").AddTo(context.AssetContainer);
-             
-                Dictionary<string, VRCExpressionsMenu> categories = new Dictionary<string, VRCExpressionsMenu>();
-
-                foreach (var control in controls)
-                {
-                    var menu = mainMenu;
-                    if (groupCount >= 2 && !string.IsNullOrEmpty(control.Group))
-                    {
-                        if (!categories.TryGetValue(control.Group, out menu))
-                        {
-                            menu = CreateExpressionMenu($"{control.Group} Menu").AddTo(context.AssetContainer);
-                            mainMenu.controls.Add(new VRCExpressionsMenu.Control() { name = control.Group, type = VRCExpressionsMenu.Control.ControlType.SubMenu, subMenu = menu });
-                            categories.Add(control.Group, menu);
-                        }
-                    }
-
-                    control.CreateMenu((control.Name, control, menu.controls));
-                }
-
-                x.menuToAppend = CreateExpressionMenu("Menu", new VRCExpressionsMenu.Control()
-                {
-                    name = "Light Controller",
-                    type = VRCExpressionsMenu.Control.ControlType.SubMenu,
-                    subMenu = mainMenu,
-                }).AddTo(context.AssetContainer);
-
-                if (controller.AddResetButton)
-                {
-                    foreach(var (category, i) in categories.Select((a, i) => (a, i)))
-                    {
-                        var menu = category.Value;
-                        menu.controls.Insert(1, new VRCExpressionsMenu.Control()
-                        {
-                            name = "Reset",
-                            type = VRCExpressionsMenu.Control.ControlType.Button,
-                            parameter = new VRCExpressionsMenu.Control.Parameter() { name = $"Reset" },
-                            value = i + 1
-                        });
-                    }
-                }
-            });
-
-            go.GetOrAddComponent<ModularAvatarParameters>(component =>
-            {
-                var syncSettings = typeof(ParameterSyncSettings).GetFields().ToDictionary(x => x.Name, x => (bool)x.GetValue(controller.SyncSettings));
-                component.parameters.Clear();
-                component.parameters.AddRange(parameters.Select(x =>
-                {
-                    var p = x.ToParameterConfig();
-                    p.saved = controller.SaveParameters;
-                    p.remapTo = $"{ParameterNamePrefix}{p.nameOrPrefix}";
-                    if (x.Group == null || (syncSettings.TryGetValue(x.Group, out var flag) && !flag))
-                    {
-                        p.localOnly = true;
-                    }
-                    return p;
-                }));
-            });
         }
 
-        private static VRCExpressionsMenu CreateExpressionMenu(string name, VRCExpressionsMenu.Control control = null)
+        //Distance Fade
         {
-            var result = ScriptableObject.CreateInstance<VRCExpressionsMenu>();
-            result.name = name;
-            if (control != null)
-                result.controls.Add(control);
-            return result;
+            var distFade = blendTree.AddDirectBlendTree("DistanceFade");
+
+            AddControl(distFade, "DistanceFadeStart", 0, lilToonParameters.DistanceFadeStart, 0, 1);
+            AddControl(distFade, "DistanceFadeEnd", 1, lilToonParameters.DistanceFadeEnd, 0, 1);
+            AddControl(distFade, "DistanceFadeStrength", 2, lilToonParameters.DistanceFadeStrength, 0, 1);
+            AddControl(distFade, "DistanceFadeBackfaceForceShadow", 3, lilToonParameters.DistanceFadeBackfaceForceShadow ? 1 : 0, 0, 1);
+
+            void AddControl(DirectBlendTree target, string name, int index, float defaultValue, float min, float max)
+            {
+                var tree = target.AddBlendTree(name["DistanceFade".Length..]);
+                tree.ParameterName = name;
+                var enable0 = new AnimationClip() { name = "Start" }.AddTo(context.AssetContainer);
+                var enable1 = new AnimationClip() { name = "End" }.AddTo(context.AssetContainer);
+                foreach (var bind in bindings)
+                {
+                    var x = bind with { propertyName = $"{PropertyNamePrefix}DistanceFade.{"xyzw"[index]}" };
+
+                    AnimationUtility.SetEditorCurve(enable0, x, AnimationUtils.Constant(min));
+                    AnimationUtility.SetEditorCurve(enable1, x, AnimationUtils.Constant(max));
+                }
+                tree.Motions.Add(enable0);
+                tree.Motions.Add(enable1);
+            }
         }
 
-        private static ParameterControl CreateControl<T>(
-            Expression<Func<LilToonParameters, T>> parameter,
-            Action<(string Name, LightController Generator, LilToonParameters Parameters, List<ParameterControl.Parameter> List)> setParam = null,
-            Action<(string Path, Type Type, AnimationClip Default, AnimationClip Control, Material Material, LightController Generator, LilToonParameters Parameters)> setCurves = null,
-            Func<LightController, bool> condition = null)
+        var fx = new AnimatorController() { name = "LightController" }.AddTo(context.AssetContainer);
+        fx.AddLayer(blendTree.ToAnimatorControllerLayer(context.AssetContainer));
+
+        var parameterSync = new AnimatorController() { name = "Light Controller Parameter Sync" }.AddTo(context.AssetContainer);
+        parameterSync.AddParameter("IsLocal", false);
+
         {
-            var targetField = (parameter.Body as MemberExpression).Member as FieldInfo;
-            var attributes = targetField.GetCustomAttributes();
+            parameterSync.AddLayer("Light Controller Parameter Sync");
+            var layer = parameterSync.layers[^1];
+            layer.defaultWeight = 1;
 
-            var nameAttr = attributes.GetAttribute<NameAttribute>(); 
-            var group = attributes.GetAttribute<GroupAttribute>()?.Group;
-            var isMaster = attributes.GetAttribute<GroupMasterAttribute>() != null;
-            var isToggle = attributes.GetAttribute<ToggleAttribute>() != null;
-            var vectorProxy = attributes.GetAttribute<VectorProxyAttribute>();
+            var blank = new AnimationClip() { name = "Blank" };
 
-            var name = isMaster ? group : nameAttr?.Name ?? targetField.Name;
-            var menuName = nameAttr?.MenuName ?? (group != null && name.StartsWith(group) ? name.Substring(group.Length) : name);
+            var idleState = AddState("Idle");
+            var localState = AddState("Local", (idleState, new() { parameter = "IsLocal", mode = AnimatorConditionMode.If }));
+            var remoteState = AddState("Remote", (idleState, new() { parameter = "IsLocal", mode = AnimatorConditionMode.IfNot }));
 
-            bool boolAsFloat = !isMaster && isToggle;
-
-            if (setParam == null)
+            foreach(var x in parameterIDTable.Keys)
             {
-                setParam = args =>
-                {
-                    if (_limitters.TryGetValue(targetField.Name, out var limitField))
-                    {
-                        var limit = (float)limitField.GetValue(args.Generator);
-                        var value = (float)targetField.GetValue(args.Parameters);
-                        value /= limit;
-                        args.List.AddParameter(args.Name, value, group, !isMaster && isToggle);
-                    }
-                    else
-                    {
-                        args.List.AddParameter(args.Name, targetField.GetValue(args.Parameters), targetField.FieldType, group, !isMaster && isToggle);
-                    }
-                };
-            }
-            if (setCurves == null)
-            {
-                var range = targetField.GetCustomAttribute<RangeAttribute>();
-                setCurves = args =>
-                {
-                    var (min, max) = range != null ? (range.min, range.max) : (0, 1);
-
-                    var value = targetField.GetValue(args.Parameters);
-
-                    float fValue = 0;
-                    if (targetField.FieldType == typeof(bool))
-                        fValue = (bool)value ? 1 : 0;
-                    else
-                        fValue = (float)value;
-
-                    if (_limitters.TryGetValue(targetField.Name, out var limitField))
-                    {
-                        var limit = (float)limitField.GetValue(args.Generator);
-                        max = limit;
-                    }
-
-
-                    if (isMaster)
-                    {
-                        var prop = $"{PropertyNamePrefix}{targetField.Name}";
-                        args.Default.SetCurve(args.Path, args.Type, prop, AnimationUtils.Constant(min));
-                        args.Control.SetCurve(args.Path, args.Type, prop, AnimationUtils.Constant(max));
-                    }
-                    else
-                    {
-                        string prop;
-                        if (vectorProxy != null)
-                        {
-                            var target = vectorProxy.TargetName;
-                            prop = $"{PropertyNamePrefix}{target}.{"xyzw"[vectorProxy.Index]}";
-                        }
-                        else
-                        {
-                            prop = $"{PropertyNamePrefix}{targetField.Name}";
-                        }
-                        args.Default.SetCurve(args.Path, args.Type, prop, AnimationUtils.Constant(fValue));
-                        args.Control.SetCurve(args.Path, args.Type, prop, AnimationUtils.Linear(min, max));
-                    }
-                };
+                AddParameterController(x);
             }
 
-            if (condition == null)
+            void AddParameterController(string name)
             {
-                if (group != null)
+                int index = parameterIDTable[name];
+                var localWait = AddState($"{name} (Wait)", (localState, new() { parameter = "ControledParameterIndex", mode = AnimatorConditionMode.Equals, threshold = index }));
+                var local = AddState ($"{name} (Local => Remote)" , (localWait, new() { parameter = "ControledParameterIndex", mode = AnimatorConditionMode.NotEqual, threshold = index }));
+                local.AddTransition(localState, new AnimatorCondition() { parameter = "ControledParameterIndex", mode = AnimatorConditionMode.NotEqual, threshold = index });
+                
+                var remote = AddState($"{name} (Remote => Local)", (remoteState, new() { parameter = "SyncTargetIndex", mode = AnimatorConditionMode.Equals, threshold = index }));
+                remote.AddTransition(remoteState, new AnimatorCondition() { parameter = "SyncTargetIndex", mode = AnimatorConditionMode.NotEqual, threshold = index });
+
+                var dr = local.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
+                dr.parameters.Add(new() { name = "SyncTargetIndex", type = VRC_AvatarParameterDriver.ChangeType.Set, value = index });
+                dr.parameters.Add(new() { name = "SyncedValue", type = VRC_AvatarParameterDriver.ChangeType.Copy ,source = name });
+
+                dr = remote.AddStateMachineBehaviour<VRCAvatarParameterDriver>();
+                dr.parameters.Add(new() { name = name, type = VRC_AvatarParameterDriver.ChangeType.Copy, source = "SyncedValue" });
+                dr.parameters.Add(new() { name = "SyncTargetIndex", type = VRC_AvatarParameterDriver.ChangeType.Set, value = 0 });
+            }
+
+            AnimatorState AddState(string name, (AnimatorState Parent, AnimatorCondition Condition)? parent = null)
+            {
+                var x = layer.stateMachine.AddState(name);
+                x.motion = blank;
+                x.writeDefaultValues = false;
+                if (parent is { } p)
                 {
-                    if (_conditions.TryGetValue(group, out var cond))
-                    {
-                        condition = generator =>
-                        {
-                            return (bool)cond.GetValue(generator);
-                        };
-                    }
+                    p.Parent.AddTransition(x, p.Condition);
                 }
-
-                if (condition == null)
-                    condition = _ => true;
+                return x;
             }
+        }
 
-            return new ParameterControl()
+        foreach (ref var x in parameters.AsSpan())
+        {
+            x.remapTo = $"LightController/{x.nameOrPrefix}";
+            var p = new AnimatorControllerParameter()
             {
-                Name = name,
-                Group = group,
-                IsMaster = isMaster,
-                Condition = condition,
-                Parameters = setParam,
-                SetAnimationCurves = setCurves,
-                CreateMenu = args =>
+                name = x.nameOrPrefix,
+                type = x.syncType switch
                 {
-                    if (isToggle)
-                        args.Controls.CreateToggle(menuName, name);
-                    else
-                        args.Controls.CreateRadialPuppet(menuName, name);
+                    ParameterSyncType.Int => AnimatorControllerParameterType.Int,
+                    _ => AnimatorControllerParameterType.Float,
                 },
+                defaultFloat = x.defaultValue,
+                defaultInt = (int)x.defaultValue,
             };
+            fx.AddParameter(p);
+            parameterSync.AddParameter(p);
         }
 
+        {
+            var root = go.GetOrAddComponent<ModularAvatarMenuItem>();
+            root.MenuSource = SubmenuSource.Children;
+            root.Control.type = ExpressionMenuItemType.SubMenu;
+
+            new SubMenu()
+            {
+                Name = "Lighting", Children = new[]
+                {
+                    new RadialPuppet(){ ParameterName = "LightMinLimit", Name = "Min", },
+                    new RadialPuppet(){ ParameterName = "LightMaxLimit", Name = "Max", },
+                    new RadialPuppet(){ ParameterName = "MonochromeLighting", Name = "Monochrome" },
+                    new RadialPuppet(){ ParameterName = "ShadowEnvStrength", },
+                    new RadialPuppet(){ ParameterName = "AsUnlit", },
+                    new RadialPuppet(){ ParameterName = "VertexLightStrength", },
+                }
+            }
+            .ToMenuItem(root);
+
+            new SubMenu()
+            {
+                Name = "Backlight",
+                Children = new MenuTree[]
+                {
+                    new Toggle(){ ParameterName = "UseBacklight", Name = "Enable" },
+                    new SubMenu() { Name = "Color", Children = new[]
+                    {
+                        new RadialPuppet(){ ParameterName = "BacklightColor/R", Name = "R", },
+                        new RadialPuppet(){ ParameterName = "BacklightColor/G", Name = "G", },
+                        new RadialPuppet(){ ParameterName = "BacklightColor/B", Name = "B", },
+                        new RadialPuppet(){ ParameterName = "BacklightColor/A", Name = "A", },
+                    }},
+                    new RadialPuppet(){ ParameterName = "BacklightMainStrength",   Name = "MainStrength"},
+                          new Toggle(){ ParameterName = "BacklightReceiveShadow",  Name = "ReceiveShadow"},
+                          new Toggle(){ ParameterName = "BacklightBackfaceMask",   Name = "BackfaceMask"},
+                    new RadialPuppet(){ ParameterName = "BacklightNormalStrength", Name = "NormalStrength"},
+                    new RadialPuppet(){ ParameterName = "BacklightBorder",         Name = "Border"},
+                    new RadialPuppet(){ ParameterName = "BacklightBlur",           Name = "Blur"},
+                    new RadialPuppet(){ ParameterName = "BacklightDirectivity",    Name = "Directivity"},
+                    new RadialPuppet(){ ParameterName = "BacklightViewStrength",   Name = "ViewStrength"},
+                }
+            }
+            .ToMenuItem(root);
+
+            new SubMenu()
+            {
+                Name = "Distance Fade",
+                Children = new MenuTree[]
+                {
+                    new RadialPuppet(){ ParameterName = "DistanceFadeStart", Name = "Start", },
+                    new RadialPuppet(){ ParameterName = "DistanceFadeEnd", Name = "End ", },
+                    new RadialPuppet(){ ParameterName = "DistanceFadeStrength", Name = "Strength", },
+                    new Toggle(){ ParameterName = "DistanceFadeBackfaceForceShadow", Name = "BackfaceForceShadow", },
+                }
+            }
+            .ToMenuItem(root);
+
+            foreach(var x in root.gameObject.GetComponentsInChildren<ModularAvatarMenuItem>())
+            {
+                if (x.Control.type == ExpressionMenuItemType.RadialPuppet)
+                {
+                    x.Control.parameter = new() { name = "ControledParameterIndex" };
+                    x.Control.value = parameterIDTable[x.Control.subParameters[0].name];
+                }
+            }
+        }
+
+        var mapa = go.GetOrAddComponent<ModularAvatarParameters>();
+        mapa.parameters = parameters;
+
+        var mama_Wd = go.AddComponent<ModularAvatarMergeAnimator>();
+        mama_Wd.animator = fx;
+        mama_Wd.layerType = VRCAvatarDescriptor.AnimLayerType.FX;
+        mama_Wd.matchAvatarWriteDefaults = false;
+        mama_Wd.pathMode = MergeAnimatorPathMode.Absolute;
+
+        var mama = go.AddComponent<ModularAvatarMergeAnimator>();
+        mama.animator = parameterSync;
+        mama.layerType = VRCAvatarDescriptor.AnimLayerType.FX;
+        mama.matchAvatarWriteDefaults = true;
+        mama.pathMode = MergeAnimatorPathMode.Absolute;
+
+    }
+
+    private static void SetMaterialParameters(Material[] materials, LilToonParameters parameters)
+    {
+        var dict = typeof(LilToonParameters).GetFields().Where(x => x.FieldType == typeof(float) || x.FieldType == typeof(bool)).ToDictionary(x => $"_{x.Name}", x => x.GetValue(parameters) switch
+        {
+            float value => value,
+            bool value => value ? 1f : 0f,
+            _ => 0f,
+        });
+
+        using var so = new SerializedObject(materials);
+        so.maxArraySizeForMultiEditing = 512;
+        using var savedProperties = so.FindProperty("m_SavedProperties");
+        using var floats = savedProperties.FindPropertyRelative("m_Floats");
+        using var colors = savedProperties.FindPropertyRelative("m_Colors");
+
+        int remain = dict.Count;
+        floats.NextVisible(true);
+        do
+        {
+            if (floats.name == "data")
+            {
+                floats.NextVisible(true);
+                var key = floats.stringValue;
+                if (dict.TryGetValue(key, out var value))
+                {
+                    floats.NextVisible(false);
+                    floats.floatValue = value;
+                    remain--;
+                }
+                else
+                {
+                    floats.NextVisible(false);
+                }
+            }
+        }
+        while (remain > 0 && floats.NextVisible(false));
+
+        colors.NextVisible(true);
+        do
+        {
+            if (colors.name == "data")
+            {
+                colors.NextVisible(true);
+                var key = colors.stringValue;
+                if (key == "_BacklightColor")
+                {
+                    colors.NextVisible(false);
+                    colors.colorValue = parameters.BacklightColor;
+                    break;
+                }
+                else
+                {
+                    colors.NextVisible(false);
+                }
+            }
+        }
+        while (colors.NextVisible(false));
+
+        so.ApplyModifiedProperties();
+    }
+
+    private static float ClampParameterValue(float value, float min, float max) => (Mathf.Clamp(value, min, max) - min) / max;
+
+    private abstract class MenuTree
+    {
+        public virtual string Name { get; set; }
+
+        public MenuTree[] Children { get; set; }
+
+        public ModularAvatarMenuItem ToMenuItem(ModularAvatarMenuItem parent = null)
+        {
+            var go = new GameObject(Name);
+            if (parent != null)
+            {
+                go.transform.parent = parent.transform;
+            }
+
+            var item = go.AddComponent<ModularAvatarMenuItem>();
+            OnCreateMenuItem(item);
+
+            if ((Children?.Length ?? 0) > 0)
+            foreach (var x in Children)
+                x.ToMenuItem(item);
+
+            return item;
+        }
+
+        protected abstract void OnCreateMenuItem(ModularAvatarMenuItem item);
+    }
+
+    private sealed class RadialPuppet : MenuTree
+    {
+        public override string Name { get => base.Name ?? ParameterName; set => base.Name = value; }
+
+        public string ParameterName { get; set; }
+
+        protected override void OnCreateMenuItem(ModularAvatarMenuItem item)
+        {
+            item.Control.type = ExpressionMenuItemType.RadialPuppet;
+            item.Control.subParameters = new VRCExpressionsMenu.Control.Parameter[] { new() { name = ParameterName } };
+        }
+    }
+
+    private sealed class Toggle : MenuTree
+    {
+        public override string Name { get => base.Name ?? ParameterName; set => base.Name = value; }
+
+        public string ParameterName { get; set; }
+
+        protected override void OnCreateMenuItem(ModularAvatarMenuItem item)
+        {
+            item.Control.type = ExpressionMenuItemType.Toggle;
+            item.Control.parameter = new() { name = ParameterName };
+        }
+    }
+
+    private sealed class SubMenu : MenuTree
+    {
+        protected override void OnCreateMenuItem(ModularAvatarMenuItem item)
+        {
+            item.Control.type = ExpressionMenuItemType.SubMenu;
+            item.MenuSource = SubmenuSource.Children;
+        }
     }
 }

@@ -1,0 +1,97 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &3885521648741970343
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 563210431463883939}
+  - component: {fileID: 1270366572204598256}
+  - component: {fileID: 3386237544067062394}
+  m_Layer: 0
+  m_Name: LightController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &563210431463883939
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3885521648741970343}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1270366572204598256
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3885521648741970343}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8b4be43d369a654e84c04cdc4f29bc4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  LightMaxLimitMax: 1
+  SaveParameters: 0
+  SyncSettings:
+    Lighting: 1
+    Backlight: 1
+    DistanceFade: 1
+  AddLightingControl: 1
+  AddBacklightControl: 0
+  AddDistanceFadeControl: 0
+  DistanceFadeEndMax: 1
+  AddResetButton: 0
+  DefaultParameters:
+    UseLighting: 1
+    LightMinLimit: 0.05
+    LightMaxLimit: 1
+    MonochromeLighting: 0
+    ShadowEnvStrength: 0
+    AsUnlit: 0
+    VertexLightStrength: 0
+    UseBacklight: 0
+    BacklightColor: {r: 0.85, g: 0.8, b: 0.7, a: 1}
+    BacklightMainStrength: 0
+    BacklightReceiveShadow: 1
+    BacklightBackfaceMask: 1
+    BacklightNormalStrength: 1
+    BacklightBorder: 0.35
+    BacklightBlur: 0.05
+    BacklightDirectivity: 5
+    BacklightViewStrength: 1
+    UseDistanceFade: 0
+    DistanceFade: {x: 0.1, y: 0.01, z: 0, w: 0}
+    DistanceFadeStart: 0.1
+    DistanceFadeEnd: 0.01
+    DistanceFadeStrength: 0
+    DistanceFadeBackfaceForceShadow: 0
+  Excludes: []
+--- !u!114 &3386237544067062394
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3885521648741970343}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7ef83cb0c23d4d7c9d41021e544a1978, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  menuToAppend: {fileID: 0}
+  installTargetMenu: {fileID: 0}

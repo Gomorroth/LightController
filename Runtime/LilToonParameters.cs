@@ -8,112 +8,74 @@ namespace gomoru.su.LightController
     [Serializable]
     public sealed class LilToonParameters
     {
-        public const string GroupName_Lighting = "Lighting";
-        public const string GroupName_Backlight = "Backlight";
-        public const string GroupName_DistanceFade = "DistanceFade";
+        [Header("Lighting")]
 
-        [SerializeField, InternalProperty, Header("Lighting")]
-        [Toggle, Name(MenuName = "Enable")]
-        [GroupMaster, Group(GroupName_Lighting)]
-        public bool UseLighting = true;
-
-        [SerializeField, Range(0f, 1f)]
-        [Name(MenuName = "Min")]
-        [Group(GroupName_Lighting)]
+        [Range(0f, 1f)]
         public float LightMinLimit = 0.05f;
+        [Range(0f, 1f)]
+        public float LightMinLimitMin = 0;
+        [Range(0f, 1f)]
+        public float LightMinLimitMax = 1;
 
-        [SerializeField, Range(0f, 10f)]
-        [Name(MenuName = "Max")]
-        [Group(GroupName_Lighting)]
+        [Range(0f, 10f)]
         public float LightMaxLimit = 1f;
+        [Range(0f, 10f)]
+        public float LightMaxLimitMin = 0;
+        [Range(0f, 10f)]
+        public float LightMaxLimitMax = 1;
 
-        [SerializeField, Range(0f, 1f)]
-        [Name(MenuName = "Monochrome")]
-        [Group(GroupName_Lighting)]
+        [Range(0f, 1f)]
         public float MonochromeLighting = 0f;
 
-        [SerializeField, Range(0f, 1f)]
-        [Group(GroupName_Lighting)]
+        [Range(0f, 1f)]
         public float ShadowEnvStrength = 0f;
 
-        [SerializeField, Range(0f, 1f)]
-        [Group(GroupName_Lighting)]
+        [Range(0f, 1f)]
         public float AsUnlit = 0f;
 
-        [SerializeField, Range(0f, 1f)]
-        [Group(GroupName_Lighting)]
+        [Range(0f, 1f)]
         public float VertexLightStrength = 0f;
 
+        [Header("Backlight")]
 
-        [SerializeField, InternalProperty, Header("Backlight")]
-        [Toggle, Name(MenuName = "Enable")]
-        [GroupMaster, Group(GroupName_Backlight)]
         public bool UseBacklight = false;
 
-        [SerializeField]
-        [Group(GroupName_Backlight), Name(MenuName = "Strength")]
         public Color BacklightColor = new Color(0.85f, 0.8f, 0.7f, 1.0f);
 
-        [SerializeField, Range(0f, 1f)]
-        [Group(GroupName_Backlight)]
+        [Range(0f, 1f)]
         public float BacklightMainStrength = 0;
 
-        [SerializeField]
-        [Group(GroupName_Backlight), Toggle]
         public bool BacklightReceiveShadow = true;
 
-        [SerializeField]
-        [Group(GroupName_Backlight), Toggle]
         public bool BacklightBackfaceMask = true;
 
-        [SerializeField, Range(0f, 1f)]
-        [Group(GroupName_Backlight)]
+        [Range(0f, 1f)]
         public float BacklightNormalStrength = 1;
 
-        [SerializeField, Range(0f, 1f)]
-        [Group(GroupName_Backlight)]
+        [Range(0f, 1f)]
         public float BacklightBorder = 0.35f;
 
-        [SerializeField, Range(0f, 1f)]
-        [Group(GroupName_Backlight)]
+        [Range(0f, 1f)]
         public float BacklightBlur = 0.05f;
 
-        [SerializeField, Range(0f, 20f)]
-        [Group(GroupName_Backlight)]
+        [Range(0f, 20f)]
         public float BacklightDirectivity = 5;
 
-        [SerializeField, Range(0f, 1f)]
-        [Group(GroupName_Backlight)]
+        [Range(0f, 1f)]
         public float BacklightViewStrength = 1;
 
 
-        [SerializeField, InternalProperty, Header("Distance Fade")]
-        [Toggle, Name(MenuName = "Enable")]
-        [GroupMaster, Group(GroupName_DistanceFade)]
-        public bool UseDistanceFade = false;
+        [Header("Distance Fade")]
 
-        [HideInInspector]
-        [Group(GroupName_DistanceFade)]
-        public Vector4 DistanceFade = new Vector4(0.1f, 0.01f, 0, 0);
-
-        [SerializeField, Range(0, 1)]
-        [VectorProxy(nameof(DistanceFade), 0)]
-        [Group(GroupName_DistanceFade)]
+        [Range(0, 1)]
         public float DistanceFadeStart = 0.1f;
 
-        [SerializeField, Range(0, 1)]
-        [VectorProxy(nameof(DistanceFade), 1)]
-        [Group(GroupName_DistanceFade)]
+        [Range(0, 1)]
         public float DistanceFadeEnd = 0.01f;
 
-        [SerializeField, Range(0, 1)]
-        [VectorProxy(nameof(DistanceFade), 2)]
-        [Group(GroupName_DistanceFade)]
+        [Range(0, 1)]
         public float DistanceFadeStrength = 0;
 
-        [SerializeField, Toggle]
-        [VectorProxy(nameof(DistanceFade), 3)]
-        [Group(GroupName_DistanceFade)]
         public bool DistanceFadeBackfaceForceShadow = false;
     }
 }

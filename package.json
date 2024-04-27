@@ -1,12 +1,12 @@
 {
   "name": "gomoru.su.light-controller",
-  "version": "1.4.1",
+  "version": "2.0.0-alpha.0",
   "displayName": "Light Controller",
   "description": "Animation and Expression generator for lighting parameter of lilToon using Modular Avatar.",
   "url" : "https://github.com/Gomorroth/LightController",
   "vpmDependencies" : {
     "com.vrchat.avatars" : "^3.2.1",
-    "nadena.dev.modular-avatar" : "^1.6.0",
-    "nadena.dev.ndmf" : "^1.0.2"
+    "nadena.dev.modular-avatar" : "^1.9.10",
+    "nadena.dev.ndmf" : "^1.4.0"
   }
 }

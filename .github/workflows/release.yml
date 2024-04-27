@@ -19,6 +19,8 @@ jobs:
     
       - name: Checkout
         uses: actions/checkout@v3
+        with: 
+          submodules: true
 
       - name: Get packageName
         id: packageName
@@ -41,14 +43,12 @@ jobs:
       - name: Set Environment Variables
         run: |
           echo "zipFile=${{ env.packageName }}-${{ steps.version.outputs.prop }}".zip >> $GITHUB_ENV
-          echo "unityPackage=${{ env.packageName }}-${{ steps.version.outputs.prop }}.unitypackage" >> $GITHUB_ENV
         
       - name: Move files and List targets
         run: |
           shopt -s extglob
           mkdir -p "Packages/${{env.packageName}}"
           mv !("Packages") "Packages/${{env.packageName}}/"
-          find "Packages/${{env.packageName}}/" -name \*.meta >> metaList
 
       - name: Create Zip
         uses: thedoctor0/zip-release@09336613be18a8208dfa66bd57efafd9e2685657
@@ -58,17 +58,10 @@ jobs:
           filename: "../../${{env.zipFile}}"
           exclusions: '*.git*'
 
-      - name: Create UnityPackage
-        uses: pCYSl5EDgo/create-unitypackage@cfcd3cf0391a5ef1306342794866a9897c32af0b
-        with:
-          package-path: "${{env.unityPackage}}"
-          include-files: metaList
-
       - name: Make Release
         uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5
         with:
           tag_name: ${{ steps.version.outputs.prop }}
           files: |
             ${{env.zipFile}}
-            ${{env.unityPackage}}
             Packages/${{env.packageName}}/package.json

@@ -13,7 +13,6 @@ permissions:
 
 jobs:
   build:
-    if: ${{ github.event.before != '0000000000000000000000000000000000000000' }}
     runs-on: ubuntu-latest
     steps:
     

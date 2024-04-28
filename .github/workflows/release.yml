@@ -62,6 +62,7 @@ jobs:
         uses: softprops/action-gh-release@v2.0.4
         with:
           tag_name: ${{ steps.version.outputs.prop }}
+          target_commitish: ${{ github.head_ref || github.ref_name }} 
           prerelease: ${{ contains(steps.version.outputs.prop, '-') }}
           files: |
             ${{env.zipFile}}

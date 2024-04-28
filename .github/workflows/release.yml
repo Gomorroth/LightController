@@ -19,11 +19,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with: 
+          ref: ${{ github.ref }}
           submodules: true
 
       - name: Get packageName
         id: packageName
-        uses: notiz-dev/github-action-json-property@7c8cf5cc36eb85d8d287a8086a39dac59628eb31
+        uses: notiz-dev/github-action-json-property@v0.2.0
         with: 
             path: "package.json"
             prop_path: "name"
@@ -34,7 +35,7 @@ jobs:
           
       - name: Get version
         id: version
-        uses: notiz-dev/github-action-json-property@7c8cf5cc36eb85d8d287a8086a39dac59628eb31
+        uses: notiz-dev/github-action-json-property@v0.2.0
         with: 
             path: "package.json"
             prop_path: "version"
@@ -50,7 +51,7 @@ jobs:
           mv !("Packages") "Packages/${{env.packageName}}/"
 
       - name: Create Zip
-        uses: thedoctor0/zip-release@09336613be18a8208dfa66bd57efafd9e2685657
+        uses: thedoctor0/zip-release@0.7.6
         with:
           type: "zip"
           directory: "./Packages/${{env.packageName}}"
@@ -58,9 +59,10 @@ jobs:
           exclusions: '*.git*'
 
       - name: Make Release
-        uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5
+        uses: softprops/action-gh-release@v2.0.4
         with:
           tag_name: ${{ steps.version.outputs.prop }}
+          prerelease: ${{ contains(steps.version.outputs.prop, '-') }}
           files: |
             ${{env.zipFile}}
             Packages/${{env.packageName}}/package.json
